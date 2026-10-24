@@ -20,6 +20,7 @@ as the systemd unit passes them from /etc/default/plinius-modem.
 """
 import argparse
 import fcntl
+import ipaddress
 import os
 import re
 import select
@@ -119,6 +120,20 @@ def radio_on():
         os.close(fd)
 
 
+def dns_addr(s):
+    """+CGCONTRDP DNS field: IPv4, or IPv6 as 16 dotted decimal bytes"""
+    s = s.strip().strip('"')
+    parts = s.split('.')
+    try:
+        if len(parts) == 16:
+            a = ipaddress.IPv6Address(bytes(map(int, parts)))
+        else:
+            a = ipaddress.IPv4Address(s)
+    except ValueError:
+        return None
+    return None if a.is_unspecified else str(a)
+
+
 def ip(*args):
     subprocess.run(['ip', *args], check=False)
 
@@ -187,8 +202,13 @@ def main():
         if a.default_route:
             ip('route', 'add', 'default', 'dev', dev, 'metric', '2048')
     dns = [d for ln in at.cmd(f'AT+CGCONTRDP={cid}') if ln.startswith('+CGCONTRDP:')
-           for d in ln.split(',')[5:7]]
-    log(f'{dev} up: {v4}, dns', ' '.join(d.strip('"') for d in dns))
+           for d in map(dns_addr, ln.split(',')[5:7]) if d]
+    if dns:
+        # ccmni is not managed by networkd: hand the operator servers to
+        # systemd-resolved, which then resolves over the modem too
+        subprocess.run(['resolvectl', 'dns', dev, *dns], check=False)
+        subprocess.run(['resolvectl', 'default-route', dev, 'yes'], check=False)
+    log(f'{dev} up: {v4}, dns', ' '.join(dns))
 
 
 if __name__ == '__main__':
