@@ -116,6 +116,36 @@ bloky s jinými/navíc vlastnostmi, nebo mají jen „syscon" fallback:
 Tyhle jsou „série J" a je jich dost — menší než nové drivery, ale rozeseté
 po mnoha existujících bindingách. Dělat postupně, každý s `dtbs_check`.
 
+### Stav backlogu po první dávce (2026-10-24)
+
+Hotovo z backlogu: **pericfg-ao** (clock/pericfg.yaml), **infracfg-ao**
+(mfd/syscon.yaml), **topckgen + apmixedsys + imp_iic_wrap×4**
+(nový clock/mediatek,mt6878-clock.yaml). Zbývající uzly z plného
+`dtbs_check` boardu (počet = chyb na uzlu):
+
+- **`mediatek,mt6878-pinctrl` (12)** — NOVÝ compatible, chybí binding
+  (checkpatch ho nechytil, je ze shallow baseline). Velký: pinmux subnody.
+  Vzor: `pinctrl/mediatek,mt6893-pinctrl.yaml` ap. **Priorita.**
+- **`mediatek,mt6878-i2c` (3)** — NOVÝ compatible, rozšířit
+  `i2c/mediatek,mt65xx-i2c.yaml` (nebo přidat). **Priorita.**
+- **`mediatek,mt6878-hwv` + spm `syscon@1c001000`** — pure syscon, přidat do
+  `mfd/syscon.yaml` (jako infracfg-ao).
+- **ufscfg-ao/pdn** (`syscon@112b8000/112bb000`, simple-mfd + `ti,syscon-reset`
+  reset-controller child, #clock-cells) — nový clock+reset binding; child
+  `ti,syscon-reset` taky nematchuje (reset/ti-syscon-reset.txt je starý .txt).
+- **UFS**: `ufshci@112b0000` (mt8183-ufshci: clocks/clock-names too long,
+  chybí vcc-supply, resets navíc) + `ufsphy@112a0000` (nodename). Per-SoC
+  compatible nebo rozšířit mt8183 binding.
+- **USB**: `usb0@…` (mtu3) + `xhci0@…` (mtk-xhci) — generické compatibly,
+  nodename `^usb(@.*)?`, clock-names. Per-SoC compatible.
+- **tphy** `t-phy@11f40000` (mt6785-tphy) + `mediatek,software-role-switch`
+  missing type v tphy.yaml.
+- **watchdog** (mt6878-wdt): 3-compatible (+ "syscon") a `reboot-mode` child
+  (syscon-reboot-mode) — chce úpravu mtk-wdt.yaml (driver+binding dialog).
+- **mt6363.yaml**: viselý mt6373-regulator ref + adc příklad.
+- drobné (1 chyba): `idle-states`, `mmc`, `keys`, `framebuffer`, `soc@0` —
+  pravděpodobně example/okolní, prověřit jednotlivě.
+
 Precedens k použití: `net/bluetooth/mediatek,mt7622-bluetooth.yaml` (SoC
 integrované BT), `power/mediatek,power-controller.yaml`,
 `net/wireless/mediatek,mt76.yaml`.
@@ -155,3 +185,10 @@ Konkrétní nity vytáhne `./scripts/checkpatch.pl --strict -g <commit>`.
   Zbývá: syscon rodina (`mt6878-*cfg-ao`) + mt6363.yaml oprava + celý
   DTS-integrační backlog (UFS/USB/tphy/topckgen/wdt — viz sekce výše).
   Pak checkpatch nity (série I/CCCI nejvíc) a globální SoB/casing.
+- 2026-10-24: backlog dávka 1 — pericfg-ao → pericfg.yaml, infracfg-ao →
+  syscon.yaml, a nový **clock/mediatek,mt6878-clock.yaml** (topckgen,
+  apmixedsys, imp_iic_wrap ×4). Vše dt_binding_check + dtbs_check čisté,
+  pushnuto. Plný board dtbs_check odhalil další NOVÉ compatibly bez bindingu:
+  **mt6878-pinctrl** (velký, priorita) a **mt6878-i2c** — checkpatch je
+  nechytil (baseline). Přesný zbytek viz backlog sekce. Další na řadě:
+  pinctrl binding, pak i2c, pak hwv/spm do syscon.yaml.
