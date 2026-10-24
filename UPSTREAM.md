@@ -161,13 +161,14 @@ Hotovo z backlogu: **pericfg-ao** (clock/pericfg.yaml), **infracfg-ao**
 - **watchdog** (`mt6878-wdt`): 3-compatible (+ "syscon") a `reboot-mode` child
   (syscon-reboot-mode) — mtk-wdt.yaml to nemodeluje. Driver+binding dialog.
 - **tphy** `t-phy@11f40000` (`mediatek,mt6785-tphy`,`generic-tphy-v2`): oneOf
-  fail + `usb-phy@0` `port` prop + `mediatek,software-role-switch` missing type.
-  Software-role-switch type fix je čistý; zbytek je reused mt6785-tphy — ověřit,
-  jestli má být per-SoC compatible.
+  fail + `usb-phy@0` `port` prop. (~~`software-role-switch` missing type~~ ✅
+  opraveno — `type: boolean` do tphy.yaml, commit 22f793e31.) Zbytek je reused
+  mt6785-tphy — ověřit per-SoC compatible.
+- ~~**framebuffer** `fb-panel`~~ ✅ — odstraněn `panel`/`fb-panel` child z DTS
+  (driver je nečte), commit e06b48c4e.
 - **idle-states**: uzly `clusteroff-b`/`cpuoff-l`/… nesedí `^(cpu|cluster)-`,
-  `entry-method` má být `psci`. DTS přejmenování CPU idle-states (opatrně).
-- **framebuffer** (`simple-framebuffer`): custom prop `fb-panel` — ověřit, jestli
-  ho disp-refresh driver čte; pokud ne, odstranit z DTS (jako i2c gpio-id).
+  `entry-method` má být `psci`, + nestandardní MTK stavy (mcusysoff/s2idle/
+  system-vcore). **Přesunuto do bodu 4 (stabilita)** — mění CPU idle/power.
 - **mt6363.yaml** (Collabora, ne-náš): viselý `mt6373-regulator` $ref + adc
   příklad. Buď dopsat mt6373 binding, nebo odstranit mt6373 oneOf větev.
 
