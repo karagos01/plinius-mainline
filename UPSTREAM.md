@@ -126,8 +126,9 @@ Hotovo z backlogu: **pericfg-ao** (clock/pericfg.yaml), **infracfg-ao**
 - **`mediatek,mt6878-pinctrl` (12)** — NOVÝ compatible, chybí binding
   (checkpatch ho nechytil, je ze shallow baseline). Velký: pinmux subnody.
   Vzor: `pinctrl/mediatek,mt6893-pinctrl.yaml` ap. **Priorita.**
-- **`mediatek,mt6878-i2c` (3)** — NOVÝ compatible, rozšířit
-  `i2c/mediatek,mt65xx-i2c.yaml` (nebo přidat). **Priorita.**
+- ~~`mediatek,mt6878-i2c`~~ ✅ — compatible už v `i2c/i2c-mt65xx.yaml` byl;
+  chyby byly downstream props `scl-gpio-id`/`sda-gpio-id` na i2c7, odstraněny
+  z DTS (driver je nepoužívá). Commit `9a8aa6729`.
 - **`mediatek,mt6878-hwv` + spm `syscon@1c001000`** — pure syscon, přidat do
   `mfd/syscon.yaml` (jako infracfg-ao).
 - **ufscfg-ao/pdn** (`syscon@112b8000/112bb000`, simple-mfd + `ti,syscon-reset`
