@@ -4,8 +4,10 @@ NetAgent do, reduced to the minimum).
 
 Needs the modem ready (ccci-server.py --radio started the SIM). Steps:
 unlock the SIM (only with all three PIN tries left), turn the radio on
-over MIPC, wait for the network, activate PDP context 1 and configure the
-ccmni interface the modem reports in its +EIF URC:
+over MIPC, set the initial attach APN (else no LTE attach, 2G only),
+wait for the network, activate PDP context 1 (on LTE the default bearer
+of the attach, context 0) and configure the ccmni interface the modem
+reports in its +EIF URC:
 
     +EIF: <id>, ifup, <type>, <ipv4>, <ipv6 as hex bytes>, 0
 
@@ -98,6 +100,12 @@ def unlock(at, pin):
     return at.cmd(f'AT+CPIN="{pin}"')[-1] == 'OK'
 
 
+def lte(at):
+    """Registered on LTE (or NR): the access technology of +COPS is 7+"""
+    cops = query(at, 'AT+COPS?', '+COPS:')
+    return bool(cops) and cops.split(',')[-1].isdigit() and int(cops.split(',')[-1]) >= 7
+
+
 def radio_on():
     fd = os.open(MIPC_PORT, os.O_RDWR)
     try:
@@ -127,6 +135,11 @@ def main():
     if not unlock(at, a.pin):
         sys.exit(1)
     radio_on()
+    # Without an initial attach APN the modem does not attach to LTE and
+    # stays on 2G. Both settings are lost when the radio turns on, so set
+    # them after that; EGTYPE 4 attaches for packet service right away.
+    at.cmd(f'AT+EIAAPN="{a.apn}",0')
+    at.cmd('AT+EGTYPE=4')
     at.cmd('AT+EIFCONFIG=3')
     for _ in range(60):
         reg = query(at, 'AT+CEREG?', '+CEREG:')
@@ -136,12 +149,24 @@ def main():
     else:
         log('not registered:', reg)
         sys.exit(1)
+    # Registered on 2G anyway: the APN again makes it reselect LTE
+    if not lte(at):
+        at.cmd(f'AT+EIAAPN="{a.apn}",0')
+        for _ in range(15):
+            time.sleep(2)
+            if lte(at):
+                break
     log('registered:', query(at, 'AT+COPS?', '+COPS:'))
 
     at.cmd(f'AT+CGDCONT=1,"IPV4V6","{a.apn}"')
+    cid = 1
     if at.cmd('AT+CGACT=1,1', timeout=60)[-1] != 'OK':
-        log('PDP activation failed')
-        sys.exit(1)
+        # On LTE the attach set up the default bearer to the same APN as
+        # context 0, a second one is refused: use that one
+        cid = 0
+        if at.cmd('AT+CGACT=1,0', timeout=60)[-1] != 'OK':
+            log('PDP activation failed')
+            sys.exit(1)
     m = at.wait_urc(r'\+EIF: (\d+), ifup, (\d+), ([\d.]*)', 20)
     if not m:
         log('no +EIF ifup from the modem')
@@ -155,7 +180,7 @@ def main():
         ip('addr', 'add', f'{v4}/32', 'dev', dev)
         if a.default_route:
             ip('route', 'add', 'default', 'dev', dev, 'metric', '2048')
-    dns = [d for ln in at.cmd('AT+CGCONTRDP=1') if ln.startswith('+CGCONTRDP:')
+    dns = [d for ln in at.cmd(f'AT+CGCONTRDP={cid}') if ln.startswith('+CGCONTRDP:')
            for d in ln.split(',')[5:7]]
     log(f'{dev} up: {v4}, dns', ' '.join(d.strip('"') for d in dns))
 
