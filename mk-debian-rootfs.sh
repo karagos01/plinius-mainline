@@ -33,11 +33,20 @@ EOF
 ln -sf /usr/share/zoneinfo/Europe/Prague $R/etc/localtime
 echo Europe/Prague > $R/etc/timezone
 
-# Kernel modules and the WiFi NVRAM (the WiFi firmware itself comes from LK)
+# Kernel modules and the NVRAM of WiFi and the modem from scripts/build.sh
+# nvram (the WiFi firmware itself comes from LK)
 rm -rf $R/lib/modules/*
 make -s -C src/MT6878-Mainline_linux O=$PWD/$B ARCH=arm64 LLVM=1 \
 	INSTALL_MOD_PATH=$PWD/$R INSTALL_MOD_STRIP=1 modules_install
-install -D -m 644 firmware/vendor/WIFI $R/lib/firmware/mediatek/mt6878-wifi-nvram.bin
+NV=out/modem-nvram
+WIFI_NVRAM=$NV/nvdata/APCFG/APRDEB/WIFI
+[ -f $WIFI_NVRAM ] || WIFI_NVRAM=firmware/vendor/WIFI
+install -D -m 644 $WIFI_NVRAM $R/lib/firmware/mediatek/mt6878-wifi-nvram.bin
+# Modem NVRAM (calibration, IMEI): the modem writes it, never overwrite it
+if [ -d $NV ] && [ ! -d $R/var/lib/modem ]; then
+	install -d -m 700 $R/var/lib/modem
+	cp -a $NV/. $R/var/lib/modem/
+fi
 
 # Modem userspace and mobile data (the PIN goes to /etc/default/plinius-modem)
 install -d $R/usr/local/lib/plinius-modem

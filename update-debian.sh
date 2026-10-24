@@ -1,5 +1,5 @@
 #!/bin/bash
-# Install the current kernel (src/build-linux) as the default system: the
+# Build the kernel and install it as the default system: the
 # modules go to the Debian rootfs on the microSD, the boot image with
 # root=LABEL=plinius to vendor_boot_b, which U-Boot boots by default.
 # The phone must be running (Debian or the initramfs) and reachable by ssh.
@@ -10,6 +10,7 @@ B=src/build-linux
 M=$(mktemp -d)
 trap 'rm -rf "$M"' EXIT
 
+scripts/build.sh kernel
 make -s -C src/MT6878-Mainline_linux O=$PWD/$B ARCH=arm64 LLVM=1 \
 	INSTALL_MOD_PATH="$M" INSTALL_MOD_STRIP=1 modules_install
 KVER=$(ls "$M/lib/modules")
