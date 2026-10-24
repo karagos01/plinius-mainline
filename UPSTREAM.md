@@ -76,8 +76,8 @@ zatím mimo rozsah tohoto auditu.
 | `mediatek,mt6878-spmi` | rozšířit | `spmi/mtk,spmi-mtk-pmif.yaml` | 🟡 |
 | `mediatek,mt6878-power-controller` | rozšířit | `power/mediatek,power-controller.yaml` | 🟡 |
 | `mediatek,mt6878-infracfg-ao` | rozšířit | `…/mediatek,infracfg.yaml` (syscon) | 🟡 |
-| `mediatek,mt6878-connsys` | nový | `soc/mediatek/mediatek,mt6878-connsys.yaml` | ❌ |
-| `mediatek,mt6878-wifi` | rozšířit | `net/wireless/mediatek,mt76.yaml` | 🟡 |
+| `mediatek,mt6878-connsys` | nový | `soc/mediatek/mediatek,mt6878-connsys.yaml` | ✅ |
+| `mediatek,mt6878-wifi` | rozšířit | `net/wireless/mediatek,mt76.yaml` | ✅ |
 | `mediatek,mt6878-bluetooth` | nový (vzor: mt7622-bluetooth) | `net/bluetooth/mediatek,mt6878-bluetooth.yaml` | ✅ |
 | `mediatek,mt6878-ccci` | nový | `soc/mediatek/mediatek,mt6878-ccci.yaml` | ❌ |
 | `mediatek,mt6878-disp-refresh` | nový | `soc/mediatek/mediatek,mt6878-disp-refresh.yaml` | ❌ |
@@ -112,5 +112,10 @@ Konkrétní nity vytáhne `./scripts/checkpatch.pl --strict -g <commit>`.
 - 2026-10-24: binding `mediatek,mt6878-bluetooth` napsán (vzor
   mt7622-bluetooth) a ověřen — `dt_binding_check` i `dtbs_check` čisté.
   Commit v kernel repu. Nalezen tphy type-definition problém (viz výše).
-  Další krok: série F/G/H bindings — connsys (`mediatek,mt6878-connsys`,
-  nový YAML pod soc/mediatek), pak WiFi (rozšířit mt76.yaml).
+- 2026-10-24: bindings `mediatek,mt6878-connsys` (nový, soc/mediatek) a
+  `mediatek,mt6878-wifi` (rozšíření mt76.yaml — compatible, `mediatek,connsys`
+  phandle, interrupts if/then pro 2 linky) napsány a ověřeny (dt_binding_check
+  + dtbs_check čisté). Hotovo 3/14 bindings (BT, connsys, WiFi).
+  Další na řadě: `mediatek,mt6878-ccci` (modem, nový YAML) a PMIC/regulátory
+  (mt6685, mt6369), pak spmi/power-controller/infracfg/keys rozšíření a board
+  do arm/mediatek.yaml. Pak checkpatch nity (série I/CCCI nejvíc) a tphy fix.
