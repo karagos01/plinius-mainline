@@ -68,20 +68,53 @@ zatím mimo rozsah tohoto auditu.
 | compatible | binding | cesta | stav |
 |---|---|---|---|
 | `mediatek,mt6878-mmc` | mtk-sd (upraveno) | `mmc/mtk-sd.yaml` | ✅ |
-| `mediatek,mt6363` | nový (v portu) | `mfd/mediatek,mt6363.yaml` | ✅ |
-| `mediatek,mt6363-keys` | rozšířit | `input/mediatek,pmic-keys.yaml` | 🟡 |
-| `mediatek,mt6363-regulator` | rozšířit/nový | `regulator/mediatek,mt6363-regulator.yaml` | ❌ |
-| `mediatek,mt6369-regulator` | nový | `regulator/mediatek,mt6369-regulator.yaml` | ❌ |
-| `mediatek,mt6685` | nový | `mfd/mediatek,mt6685.yaml` | ❌ |
-| `mediatek,mt6878-spmi` | rozšířit | `spmi/mtk,spmi-mtk-pmif.yaml` | 🟡 |
-| `mediatek,mt6878-power-controller` | rozšířit | `power/mediatek,power-controller.yaml` | 🟡 |
-| `mediatek,mt6878-infracfg-ao` | rozšířit | `…/mediatek,infracfg.yaml` (syscon) | 🟡 |
+| `mediatek,mt6363` | nový (v portu) | `mfd/mediatek,mt6363.yaml` | ⚠️ (viz níže) |
+| `mediatek,mt6363-keys` | rozšířeno | `input/mediatek,pmic-keys.yaml` + keys v mt6363.yaml | ✅ |
+| `mediatek,mt6363-regulator` | existuje | `regulator/mediatek,mt6363-regulator.yaml` | ✅ |
+| `mediatek,mt6369-regulator` | nový | `regulator/mediatek,mt6369-regulator.yaml` | ✅ |
+| `mediatek,mt6685` | nový | `mfd/mediatek,mt6685.yaml` | ✅ |
+| `mediatek,mt6878-spmi` | rozšířeno (+ interrupty) | `spmi/mtk,spmi-mtk-pmif.yaml` | ✅ |
+| `mediatek,mt6878-power-controller` | rozšířeno | `power/mediatek,power-controller.yaml` | ✅ |
+| `mediatek,mt6878-infracfg-ao` | rozšířit | `clock/mediatek,infracfg.yaml` (syscon) | ❌ (viz syscon rodina) |
 | `mediatek,mt6878-connsys` | nový | `soc/mediatek/mediatek,mt6878-connsys.yaml` | ✅ |
-| `mediatek,mt6878-wifi` | rozšířit | `net/wireless/mediatek,mt76.yaml` | ✅ |
-| `mediatek,mt6878-bluetooth` | nový (vzor: mt7622-bluetooth) | `net/bluetooth/mediatek,mt6878-bluetooth.yaml` | ✅ |
-| `mediatek,mt6878-ccci` | nový | `soc/mediatek/mediatek,mt6878-ccci.yaml` | ❌ |
-| `mediatek,mt6878-disp-refresh` | nový | `soc/mediatek/mediatek,mt6878-disp-refresh.yaml` | ❌ |
-| `volla,plinius` + vendor `volla` | rozšířit | `arm/mediatek.yaml` + `vendor-prefixes.yaml` | 🟡 |
+| `mediatek,mt6878-wifi` | rozšířeno | `net/wireless/mediatek,mt76.yaml` | ✅ |
+| `mediatek,mt6878-bluetooth` | nový | `net/bluetooth/mediatek,mt6878-bluetooth.yaml` | ✅ |
+| `mediatek,mt6878-ccci` | nový | `soc/mediatek/mediatek,mt6878-ccci.yaml` | ✅ |
+| `mediatek,mt6878-disp-refresh` | nový | `soc/mediatek/mediatek,mt6878-disp-refresh.yaml` | ✅ |
+| `volla,plinius` + vendor `volla` | rozšířeno (+ nothing,tetris) | `arm/mediatek.yaml` + `vendor-prefixes.yaml` | ✅ |
+
+**Driver-bindings hotové: 12/14.** Zbývá syscon rodina (infracfg-ao) a oprava
+mt6363.yaml — obojí v DTS-integračním backlogu níže.
+
+## DTS-integrační backlog (série J) — z plného `dtbs_check` boardu
+
+Reálné `dtbs_check` na `mt6878-volla-plinius.dtb` ukázalo, že kromě nových
+driverů je potřeba doladit DTS uzly, které znovupoužívají existující IP
+bloky s jinými/navíc vlastnostmi, nebo mají jen „syscon" fallback:
+
+- **`mt6363.yaml` (přidáno portem) je rozbité:** visí na chybějícím
+  `regulator/mediatek,mt6373-regulator.yaml` (unresolvable $ref) a jeho vlastní
+  příklad padá (`adc@1000: reg` nematchuje). Opravit: buď dopsat mt6373
+  regulator binding, nebo z `oneOf` odstranit mt6373 větev (board ho nepoužívá);
+  a spravit adc příklad.
+- **syscon rodina `mediatek,mt6878-*cfg-ao`** — „failed to match any schema":
+  `infracfg-ao`, `pericfg-ao`, `ufscfg-ao`, `ufscfg-pdn`,
+  `imp_iic_wrap-cs/ws/ess`. Každý má specifický compatible + `"syscon"` fallback.
+  Doplnit je do příslušných mediatek syscon/infracfg bindings (nebo založit).
+- **UFS** `ufshci@112b0000` (`mediatek,mt8183-ufshci`): `clocks`/`clock-names`
+  too long (13 vs schema), chybí `vcc-supply`, `resets`/`reset-names` navíc.
+  Buď per-SoC compatible, nebo rozšířit mt8183-ufshci binding.
+- **USB** `xhci0@...` (`mediatek,mtk-xhci`) a `usb0@...` (`mediatek,mtu3`):
+  generické compatibly nejsou v enumu + nodename/`clock-names` neodpovídá.
+  Potřebují per-SoC compatible (`mediatek,mt6878-xhci`/`-mtu3`) nebo doplnění.
+- **tphy** `t-phy@11f40000` (`mediatek,mt6785-tphy`) nematchuje; souvisí
+  s nálezem `mediatek,software-role-switch` missing type (viz Dílčí nálezy).
+- **topckgen** `syscon@10000000`: `hw-voter-regmap` není v bindingu.
+- **watchdog** `watchdog@1c00a000` (`mediatek,mt6878-wdt`): `reboot-mode`
+  navíc + compatible oneOf; doplnit mt6878-wdt do mtk-wdt bindingu.
+
+Tyhle jsou „série J" a je jich dost — menší než nové drivery, ale rozeseté
+po mnoha existujících bindingách. Dělat postupně, každý s `dtbs_check`.
 
 Precedens k použití: `net/bluetooth/mediatek,mt7622-bluetooth.yaml` (SoC
 integrované BT), `power/mediatek,power-controller.yaml`,
@@ -112,10 +145,13 @@ Konkrétní nity vytáhne `./scripts/checkpatch.pl --strict -g <commit>`.
 - 2026-10-24: binding `mediatek,mt6878-bluetooth` napsán (vzor
   mt7622-bluetooth) a ověřen — `dt_binding_check` i `dtbs_check` čisté.
   Commit v kernel repu. Nalezen tphy type-definition problém (viz výše).
-- 2026-10-24: bindings `mediatek,mt6878-connsys` (nový, soc/mediatek) a
-  `mediatek,mt6878-wifi` (rozšíření mt76.yaml — compatible, `mediatek,connsys`
-  phandle, interrupts if/then pro 2 linky) napsány a ověřeny (dt_binding_check
-  + dtbs_check čisté). Hotovo 3/14 bindings (BT, connsys, WiFi).
-  Další na řadě: `mediatek,mt6878-ccci` (modem, nový YAML) a PMIC/regulátory
-  (mt6685, mt6369), pak spmi/power-controller/infracfg/keys rozšíření a board
-  do arm/mediatek.yaml. Pak checkpatch nity (série I/CCCI nejvíc) a tphy fix.
+- 2026-10-24: bindings connsys + WiFi (mt76.yaml) hotové a ověřené.
+- 2026-10-24: dávka bindings dokončena — **12/14 driver-bindings hotovo**:
+  ccci (nový), mt6369-regulator (nový), mt6685 (nový), mt6363-keys (pmic-keys +
+  mt6363.yaml), spmi (+interrupty, opravuje i mt8186), power-controller,
+  disp-refresh (nový), board volla,plinius+nothing,tetris, vendor volla
+  (Hallo Welt Systeme UG). Vše dt_binding_check + dtbs_check čisté, commity
+  pushnuté na karagos01/linux plinius.
+  Zbývá: syscon rodina (`mt6878-*cfg-ao`) + mt6363.yaml oprava + celý
+  DTS-integrační backlog (UFS/USB/tphy/topckgen/wdt — viz sekce výše).
+  Pak checkpatch nity (série I/CCCI nejvíc) a globální SoB/casing.
