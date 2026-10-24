@@ -1,0 +1,4 @@
+# Settings of plinius-mobile-data.service
+# SIM PIN, entered only while all three tries are left
+#SIM_PIN=
+APN=internet

@@ -12,6 +12,9 @@ ccmni interface the modem reports in its +EIF URC:
 The interface is ccmni<id % 100>. NetAgent has to confirm it with
 AT+EIF=<id>,"ifst","up",<type>, before that the modem keeps the data path
 of the PDN closed. IPv6 is configured by the router advertisement.
+
+The PIN and the APN can also come from the environment (SIM_PIN, APN),
+as the systemd unit passes them from /etc/default/plinius-modem.
 """
 import argparse
 import os
@@ -113,8 +116,9 @@ def ip(*args):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
-    ap.add_argument('--pin', help='SIM PIN, entered only with 3 tries left')
-    ap.add_argument('--apn', default='internet')
+    ap.add_argument('--pin', default=os.environ.get('SIM_PIN'),
+                    help='SIM PIN, entered only with 3 tries left (env SIM_PIN)')
+    ap.add_argument('--apn', default=os.environ.get('APN') or 'internet')
     ap.add_argument('--default-route', action='store_true',
                     help='add a default route over the modem (metric 2048)')
     a = ap.parse_args()

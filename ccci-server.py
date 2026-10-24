@@ -22,6 +22,7 @@ import argparse
 import mmap
 import os
 import select
+import socket
 import struct
 import sys
 import threading
@@ -367,6 +368,18 @@ def mipc_radio_state(on):
         os.close(fd)
 
 
+def sd_notify(state):
+    """Tell systemd (Type=notify) about our state, if it runs us"""
+    path = os.environ.get('NOTIFY_SOCKET')
+    if not path:
+        return
+    if path[0] == '@':
+        path = '\0' + path[1:]
+    with socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM) as s:
+        s.connect(path)
+        s.send(state.encode())
+
+
 def start_modem(radio):
     log('starting the modem')
     fd = os.open(STATE, os.O_WRONLY)
@@ -375,12 +388,13 @@ def start_modem(radio):
         log('modem ready')
     except OSError as e:
         log('modem start failed:', e)
-        return
+        os._exit(1)
     finally:
         os.close(fd)
     if radio:
         # SIM PIN entry stays with the user (AT+CPIN), then radio state 1
         mipc_radio_state(False)
+    sd_notify('READY=1')
 
 
 def main():

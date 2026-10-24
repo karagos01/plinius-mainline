@@ -1,0 +1,14 @@
+[Unit]
+Description=Mobile data over the MT6878 modem
+Requires=plinius-modem.service
+After=plinius-modem.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+EnvironmentFile=-/etc/default/plinius-modem
+ExecStart=/usr/bin/python3 -u /usr/local/lib/plinius-modem/mobile-data.py --default-route
+TimeoutStartSec=300
+
+[Install]
+WantedBy=multi-user.target

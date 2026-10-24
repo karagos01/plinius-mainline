@@ -2,7 +2,8 @@
 # Build a Debian (trixie, arm64) rootfs for Plinius in out/debian-rootfs:
 # debootstrap through qemu-user, the kernel modules of src/build-linux, the
 # WiFi NVRAM, USB gadget networking (172.16.42.1, DHCP for the host),
-# root ssh with the host key and root autologin on the serial consoles.
+# root ssh with the host key, root autologin on the serial consoles and
+# the modem services.
 #   usage: sudo mk-debian-rootfs.sh [ssh-pubkey]
 #   env: WIFI_SSID / WIFI_PSK to preconfigure wlan0
 set -e
@@ -37,6 +38,14 @@ rm -rf $R/lib/modules/*
 make -s -C src/MT6878-Mainline_linux O=$PWD/$B ARCH=arm64 LLVM=1 \
 	INSTALL_MOD_PATH=$PWD/$R INSTALL_MOD_STRIP=1 modules_install
 install -D -m 644 firmware/vendor/WIFI $R/lib/firmware/mediatek/mt6878-wifi-nvram.bin
+
+# Modem userspace and mobile data (the PIN goes to /etc/default/plinius-modem)
+install -d $R/usr/local/lib/plinius-modem
+install -m 755 scripts/ccci-server.py scripts/ccci_fs.py scripts/mobile-data.py \
+	$R/usr/local/lib/plinius-modem/
+install -m 644 scripts/systemd/plinius-*.service $R/etc/systemd/system/
+[ -f $R/etc/default/plinius-modem ] ||
+	install -m 600 scripts/systemd/plinius-modem.default $R/etc/default/plinius-modem
 
 # ssh: root with the host key only
 if [ -f "$PUBKEY" ]; then
@@ -105,7 +114,8 @@ echo LANG=cs_CZ.UTF-8 > $R/etc/default/locale
 chroot $R /bin/sh -e <<'EOF'
 export LC_ALL=C
 locale-gen >/dev/null
-systemctl enable systemd-networkd systemd-resolved ssh systemd-timesyncd
+systemctl enable systemd-networkd systemd-resolved ssh systemd-timesyncd \
+	plinius-modem plinius-mobile-data
 # Do not hold the boot until WiFi is up
 systemctl mask systemd-networkd-wait-online
 passwd -l root

@@ -1,0 +1,16 @@
+[Unit]
+Description=MT6878 modem userspace (CCCI RPC and FS servers)
+After=local-fs.target
+
+[Service]
+Type=notify
+NotifyAccess=all
+# UFS runtime suspend while the modem runs hangs a CPU
+ExecStartPre=/bin/sh -c 'for f in /sys/bus/platform/devices/112b0000.ufshci/power/control /sys/class/scsi_device/*/device/power/control; do echo on > $f; done'
+ExecStartPre=/sbin/modprobe mtk_ccci
+ExecStartPre=/bin/sh -c 'for i in $(seq 50); do [ -e /dev/ccci_fs ] && exit 0; sleep 0.2; done; exit 1'
+ExecStart=/usr/bin/python3 -u /usr/local/lib/plinius-modem/ccci-server.py --radio
+TimeoutStartSec=120
+
+[Install]
+WantedBy=multi-user.target
