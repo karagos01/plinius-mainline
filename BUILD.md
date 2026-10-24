@@ -43,13 +43,13 @@ sudo apt install clang lld llvm gcc-aarch64-linux-gnu make bc bison flex \
     fastboot curl python3-serial
 ```
 
-**Zdroje** v `src/`. Větev `plinius` zatím existuje jen lokálně:
+**Zdroje** v `src/`. Větev `plinius` je na forcích pod účtem karagos01:
 
 | Adresář | Repozitář | Větev |
 |---|---|---|
-| `src/MT6878-Mainline_linux` | github.com/MT6878-Mainline/linux | `plinius` |
-| `src/MT6878-Mainline_u-boot` | github.com/MT6878-Mainline/u-boot | `plinius` |
-| `scripts/` | tento repozitář | `main` |
+| `src/MT6878-Mainline_linux` | github.com/karagos01/linux (fork) | `plinius` |
+| `src/MT6878-Mainline_u-boot` | github.com/karagos01/u-boot (fork) | `plinius` |
+| `scripts/` | github.com/karagos01/plinius-mainline | `main` |
 | `tools/mkbootimg` | AOSP mkbootimg (`mkbootimg.py`) | — |
 
 `tools/*.c` (devmem, memdump, connlog) jsou malé pomocníky do initramfs.
