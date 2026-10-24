@@ -51,7 +51,8 @@ fi
 # Modem userspace and mobile data (the PIN goes to /etc/default/plinius-modem)
 install -d $R/usr/local/lib/plinius-modem
 install -m 755 scripts/ccci-server.py scripts/ccci_fs.py scripts/mobile-data.py \
-	$R/usr/local/lib/plinius-modem/
+	scripts/sms.py $R/usr/local/lib/plinius-modem/
+ln -sf /usr/local/lib/plinius-modem/sms.py $R/usr/local/bin/sms
 install -m 644 scripts/systemd/plinius-*.service $R/etc/systemd/system/
 [ -f $R/etc/default/plinius-modem ] ||
 	install -m 600 scripts/systemd/plinius-modem.default $R/etc/default/plinius-modem

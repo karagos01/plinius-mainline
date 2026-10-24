@@ -167,5 +167,10 @@ Návrat ke stocku: `fastboot flash boot_a backup/partitions/boot_a.img`
   S `--radio` po startu modemu zapne SIM přes MIPC.
 - `mobile-data.py`: PIN, rádio, registrace, PDP kontext a potvrzení
   rozhraní (`AT+EIF ... "ifst","up"`), konfigurace `ccmniN`.
+- `sms.py` (v rootfs jako `sms`): `sms send <číslo> <text>`, `sms list`,
+  `sms watch [--delete]`. PDU režim, čeština (UCS2) i dlouhé zprávy.
+  Příchozí SMS se ukládají na SIM (20 míst), `--delete` je po vypsání
+  smaže. AT kanál je jen jeden (`/dev/ccci_at`), proto se skripty střídají
+  přes `flock` na zařízení.
 - Runtime suspend UFS za běhu modemu zasekne CPU, proto ho
   `plinius-modem.service` vypíná.

@@ -19,6 +19,7 @@ The PIN and the APN can also come from the environment (SIM_PIN, APN),
 as the systemd unit passes them from /etc/default/plinius-modem.
 """
 import argparse
+import fcntl
 import os
 import re
 import select
@@ -132,6 +133,8 @@ def main():
     a = ap.parse_args()
 
     at = At(AT_PORT)
+    # The single AT channel is shared with sms.py: keep it to ourselves
+    fcntl.flock(at.fd, fcntl.LOCK_EX)
     if not unlock(at, a.pin):
         sys.exit(1)
     radio_on()
@@ -141,6 +144,9 @@ def main():
     at.cmd(f'AT+EIAAPN="{a.apn}",0')
     at.cmd('AT+EGTYPE=4')
     at.cmd('AT+EIFCONFIG=3')
+    # Store incoming SMS on the SIM and report +CMTI (sms.py reads them).
+    # The modem default 2,2 routes them as +CMT, which needs AT+CNMA acks.
+    at.cmd('AT+CNMI=2,1,0,0,0')
     for _ in range(60):
         reg = query(at, 'AT+CEREG?', '+CEREG:')
         if reg and reg.split(',')[1] in ('1', '5'):
