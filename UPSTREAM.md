@@ -123,9 +123,12 @@ Hotovo z backlogu: **pericfg-ao** (clock/pericfg.yaml), **infracfg-ao**
 (nový clock/mediatek,mt6878-clock.yaml). Zbývající uzly z plného
 `dtbs_check` boardu (počet = chyb na uzlu):
 
-- **`mediatek,mt6878-pinctrl` (12)** — NOVÝ compatible, chybí binding
-  (checkpatch ho nechytil, je ze shallow baseline). Velký: pinmux subnody.
-  Vzor: `pinctrl/mediatek,mt6893-pinctrl.yaml` ap. **Priorita.**
+- ~~`mediatek,mt6878-pinctrl`~~ ✅ — binding UŽ existoval (Collabora, z baseline),
+  ale náš DTS/driver mu neodpovídal. Srovnáno: reg-names base/bl/.../rt (driver
+  base_names stejně, mapuje se byname), odstraněny 4 duplicitní EINT regy,
+  pin-group uzly `*-state`→`*-pins`, a do bindingu doplněny R1R0 bias hodnoty
+  (MSDC1 je používá). Commity 5a357ca97/b2a2bb347/84a1a4c27. **Ověřeno na čipu**
+  (reflash update-debian.sh): pinctrl, microSD, WiFi, BT OK, dtbs_check čistý.
 - ~~`mediatek,mt6878-i2c`~~ ✅ — compatible už v `i2c/i2c-mt65xx.yaml` byl;
   chyby byly downstream props `scl-gpio-id`/`sda-gpio-id` na i2c7, odstraněny
   z DTS (driver je nepoužívá). Commit `9a8aa6729`.
@@ -191,5 +194,8 @@ Konkrétní nity vytáhne `./scripts/checkpatch.pl --strict -g <commit>`.
   apmixedsys, imp_iic_wrap ×4). Vše dt_binding_check + dtbs_check čisté,
   pushnuto. Plný board dtbs_check odhalil další NOVÉ compatibly bez bindingu:
   **mt6878-pinctrl** (velký, priorita) a **mt6878-i2c** — checkpatch je
-  nechytil (baseline). Přesný zbytek viz backlog sekce. Další na řadě:
-  pinctrl binding, pak i2c, pak hwv/spm do syscon.yaml.
+  nechytil (baseline). Přesný zbytek viz backlog sekce.
+- 2026-10-24: **pinctrl hotový + ověřený na čipu** — binding existoval, DTS/driver
+  k němu srovnány (reg-names, dup regy, *-pins uzly, R1R0 bias). i2c vyřešeno
+  (downstream props z DTS). Zbývá: hwv/spm syscon, ufscfg(+reset child), UFS,
+  USB, tphy, watchdog, mt6363.yaml; pak checkpatch nity + SoB/casing.
