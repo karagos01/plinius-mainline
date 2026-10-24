@@ -132,23 +132,47 @@ Hotovo z backlogu: **pericfg-ao** (clock/pericfg.yaml), **infracfg-ao**
 - ~~`mediatek,mt6878-i2c`~~ ✅ — compatible už v `i2c/i2c-mt65xx.yaml` byl;
   chyby byly downstream props `scl-gpio-id`/`sda-gpio-id` na i2c7, odstraněny
   z DTS (driver je nepoužívá). Commit `9a8aa6729`.
-- **`mediatek,mt6878-hwv` + spm `syscon@1c001000`** — pure syscon, přidat do
-  `mfd/syscon.yaml` (jako infracfg-ao).
-- **ufscfg-ao/pdn** (`syscon@112b8000/112bb000`, simple-mfd + `ti,syscon-reset`
-  reset-controller child, #clock-cells) — nový clock+reset binding; child
-  `ti,syscon-reset` taky nematchuje (reset/ti-syscon-reset.txt je starý .txt).
-- **UFS**: `ufshci@112b0000` (mt8183-ufshci: clocks/clock-names too long,
-  chybí vcc-supply, resets navíc) + `ufsphy@112a0000` (nodename). Per-SoC
-  compatible nebo rozšířit mt8183 binding.
-- **USB**: `usb0@…` (mtu3) + `xhci0@…` (mtk-xhci) — generické compatibly,
-  nodename `^usb(@.*)?`, clock-names. Per-SoC compatible.
-- **tphy** `t-phy@11f40000` (mt6785-tphy) + `mediatek,software-role-switch`
-  missing type v tphy.yaml.
-- **watchdog** (mt6878-wdt): 3-compatible (+ "syscon") a `reboot-mode` child
-  (syscon-reboot-mode) — chce úpravu mtk-wdt.yaml (driver+binding dialog).
-- **mt6363.yaml**: viselý mt6373-regulator ref + adc příklad.
-- drobné (1 chyba): `idle-states`, `mmc`, `keys`, `framebuffer`, `soc@0` —
-  pravděpodobně example/okolní, prověřit jednotlivě.
+- ~~`mediatek,mt6878-hwv`~~ ✅ → mfd/syscon.yaml. ~~`mediatek,mt6878-scpsys`~~ ✅
+  → přidáno do `mfd/mediatek,mt8195-scpsys.yaml` (sdílený scpsys binding; power-
+  controller child validuje). Commity 07bfaedf3.
+- ~~**ufscfg-ao/pdn** (parent)~~ ✅ — nový `clock/mediatek,mt6878-ufscfg.yaml`
+  (clock + syscon + simple-mfd + reset child). Commit 60fbb3abd. POZOR: child
+  `ti,syscon-reset` pořád hlásí „no schema" — `reset/ti-syscon-reset.txt` je
+  starý .txt (není YAML). **Upstream gap, ne náš port** — postihuje všechny
+  uživatele ti,syscon-reset. (Fix = konverze ti-syscon-reset.txt→yaml, samostatný
+  patch TI maintainerům.)
+- ~~**mmc** reg~~ ✅ — mt6878-mmc přidán k 2-reg (top base) enumu v mtk-sd.yaml.
+  Commit 384aaece8.
+
+**Zbývá — vyžaduje ROZHODNUTÍ / dialog s maintainery (ne čisté binding fixy):**
+- **UFS**: `ufshci@112b0000` používá `mediatek,mt8183-ufshci`, ale má navíc 13
+  clocks (binding čeká méně), chybí vcc-supply, resets/reset-names navíc;
+  `ufsphy@112a0000` nodename nesedí. → buď zavést `mediatek,mt6878-ufshci/-ufsphy`
+  (nový compatible + driver data), nebo rozšířit mt8183 binding. Rozhodnutí.
+- **USB**: `usb0` (`mediatek,mtu3`) + `xhci0` (`mediatek,mtk-xhci`) používají
+  GENERICKÉ compatibly (nejsou v enumu), nodename `^usb(@.*)?`, clock-names
+  nesedí. → zavést per-SoC `mediatek,mt6878-mtu3/-xhci`. Rozhodnutí + driver.
+- **keys** (`mt6363-keys`): náš DTS + port-driver čtou `interrupts`/`interrupt-names`
+  z PARENT uzlu (`platform_get_irq_byname`, pinctrl-mtk-pmic-keys.c:398), ale
+  pmic-keys.yaml čeká interrupty na CHILD key uzlech. **Designová divergence**
+  zavedená portem vs. mainline konvence. Buď (a) přepsat driver+DTS na child-model
+  (deployed power/volume tlačítka → test), nebo (b) obhájit parent-model u
+  maintainerů a rozšířit binding. Rozhodnutí.
+- **watchdog** (`mt6878-wdt`): 3-compatible (+ "syscon") a `reboot-mode` child
+  (syscon-reboot-mode) — mtk-wdt.yaml to nemodeluje. Driver+binding dialog.
+- **tphy** `t-phy@11f40000` (`mediatek,mt6785-tphy`,`generic-tphy-v2`): oneOf
+  fail + `usb-phy@0` `port` prop + `mediatek,software-role-switch` missing type.
+  Software-role-switch type fix je čistý; zbytek je reused mt6785-tphy — ověřit,
+  jestli má být per-SoC compatible.
+- **idle-states**: uzly `clusteroff-b`/`cpuoff-l`/… nesedí `^(cpu|cluster)-`,
+  `entry-method` má být `psci`. DTS přejmenování CPU idle-states (opatrně).
+- **framebuffer** (`simple-framebuffer`): custom prop `fb-panel` — ověřit, jestli
+  ho disp-refresh driver čte; pokud ne, odstranit z DTS (jako i2c gpio-id).
+- **mt6363.yaml** (Collabora, ne-náš): viselý `mt6373-regulator` $ref + adc
+  příklad. Buď dopsat mt6373 binding, nebo odstranit mt6373 oneOf větev.
+
+**Pozn.:** nothing-tetris (cizí board) má vlastní `key-default` pin uzel — mimo
+rozsah Plinius portu.
 
 Precedens k použití: `net/bluetooth/mediatek,mt7622-bluetooth.yaml` (SoC
 integrované BT), `power/mediatek,power-controller.yaml`,
@@ -197,5 +221,13 @@ Konkrétní nity vytáhne `./scripts/checkpatch.pl --strict -g <commit>`.
   nechytil (baseline). Přesný zbytek viz backlog sekce.
 - 2026-10-24: **pinctrl hotový + ověřený na čipu** — binding existoval, DTS/driver
   k němu srovnány (reg-names, dup regy, *-pins uzly, R1R0 bias). i2c vyřešeno
-  (downstream props z DTS). Zbývá: hwv/spm syscon, ufscfg(+reset child), UFS,
-  USB, tphy, watchdog, mt6363.yaml; pak checkpatch nity + SoB/casing.
+  (downstream props z DTS).
+- 2026-10-25: dávka 2 backlogu — **hwv** + **scpsys** (syscon), **ufscfg** parent
+  (nový clock+reset binding), **mmc** reg (2-reg enum). Všechny dt_binding_check
+  + dtbs_check čisté, pushnuto. Vyšetřeny a zařazeny k ROZHODNUTÍ (ne čisté fixy):
+  UFS/USB (reused generic compatibly → per-SoC), keys (parent vs child interrupt
+  model — portem zavedená divergence), watchdog (reboot-mode child), tphy, idle-
+  states, framebuffer fb-panel, mt6363.yaml. Upstream gap: ti,syscon-reset bez
+  YAML. **Všechny čisté binding fixy portu jsou hotové** — zbytek chce tvoje
+  rozhodnutí o per-SoC compatible / restrukturalizaci deployed uzlů, nebo dialog
+  s upstream maintainery. Pak checkpatch nity (CCCI) + SoB/casing.
