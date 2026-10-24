@@ -141,6 +141,13 @@ Změny konfigurace kernelu ukládej zpátky:
    s metrikou 2048 (WiFi má přednost). PIN se zadá jen při všech třech
    zbývajících pokusech. PUK nikdy automaticky.
 
+6. **Hotspot:** do `/etc/default/plinius-hotspot` zapiš `PSK=...` (WPA2,
+   8 až 63 znaků), případně `SSID` a `CHANNEL`, a pak
+   `systemctl enable --now plinius-hotspot`. Hotspot běží na `ap0` vedle
+   `wlan0`, klienti dostanou adresu z 192.168.77.0/24 a NAT do mobilních dat
+   nebo do WiFi. Firmware umí oba režimy jen na jednom kanálu, takže
+   s připojenou `wlan0` hotspot převezme její kanál.
+
 Návrat ke stocku: `fastboot flash boot_a backup/partitions/boot_a.img`
 (z fastbootu U-Bootu nebo LK).
 

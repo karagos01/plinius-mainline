@@ -1,0 +1,14 @@
+[Unit]
+Description=WiFi hotspot sharing the mobile data
+BindsTo=sys-subsystem-net-devices-wlan0.device
+After=sys-subsystem-net-devices-wlan0.device wpa_supplicant@wlan0.service
+
+[Service]
+EnvironmentFile=/etc/default/plinius-hotspot
+ExecStart=/usr/local/sbin/plinius-hotspot
+ExecStopPost=-/usr/sbin/iw dev ap0 del
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

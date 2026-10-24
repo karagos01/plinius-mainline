@@ -14,7 +14,7 @@ B=src/build-linux
 
 if [ ! -x $R/sbin/init ]; then
 	debootstrap --arch=arm64 --variant=minbase \
-		--include=systemd-sysv,udev,dbus,kmod,iproute2,iputils-ping,openssh-server,sudo,ca-certificates,wpasupplicant,iw,wireless-regdb,nano,less,procps,psmisc,e2fsprogs,dosfstools,util-linux,bash-completion,locales,tzdata,curl,wget,netbase,systemd-timesyncd,systemd-resolved,apt-utils,htop,usbutils,i2c-tools,file \
+		--include=systemd-sysv,udev,dbus,kmod,iproute2,iputils-ping,openssh-server,sudo,ca-certificates,wpasupplicant,hostapd,iw,wireless-regdb,nano,less,procps,psmisc,e2fsprogs,dosfstools,util-linux,bash-completion,locales,tzdata,curl,wget,netbase,systemd-timesyncd,systemd-resolved,apt-utils,htop,usbutils,i2c-tools,file \
 		trixie $R http://deb.debian.org/debian
 fi
 
@@ -56,6 +56,10 @@ ln -sf /usr/local/lib/plinius-modem/sms.py $R/usr/local/bin/sms
 install -m 644 scripts/systemd/plinius-*.service $R/etc/systemd/system/
 [ -f $R/etc/default/plinius-modem ] ||
 	install -m 600 scripts/systemd/plinius-modem.default $R/etc/default/plinius-modem
+# WiFi hotspot, off until the passphrase is set in /etc/default/plinius-hotspot
+install -m 755 scripts/hotspot.sh $R/usr/local/sbin/plinius-hotspot
+[ -f $R/etc/default/plinius-hotspot ] ||
+	install -m 600 scripts/systemd/plinius-hotspot.default $R/etc/default/plinius-hotspot
 
 # ssh: root with the host key only
 if [ -f "$PUBKEY" ]; then
@@ -102,6 +106,22 @@ Name=wlan0
 [Network]
 DHCP=yes
 EOF
+# Hotspot clients: addresses by DHCP, NAT to the mobile data and wlan0
+cat > $R/etc/systemd/network/30-ap0.network <<'EOF'
+[Match]
+Name=ap0
+
+[Network]
+Address=192.168.77.1/24
+DHCPServer=yes
+IPMasquerade=ipv4
+ConfigureWithoutCarrier=yes
+
+[DHCPServer]
+PoolOffset=10
+PoolSize=100
+DNS=1.1.1.1 8.8.8.8
+EOF
 if [ -n "$WIFI_SSID" ]; then
 	install -d $R/etc/wpa_supplicant
 	cat > $R/etc/wpa_supplicant/wpa_supplicant-wlan0.conf <<EOF
@@ -124,6 +144,8 @@ echo LANG=cs_CZ.UTF-8 > $R/etc/default/locale
 chroot $R /bin/sh -e <<'EOF'
 export LC_ALL=C
 locale-gen >/dev/null
+# Added after the first debootstrap of older rootfs trees
+dpkg -s hostapd >/dev/null 2>&1 || apt-get install -y -q --no-install-recommends hostapd
 systemctl enable systemd-networkd systemd-resolved ssh systemd-timesyncd \
 	plinius-modem plinius-mobile-data
 # Do not hold the boot until WiFi is up
