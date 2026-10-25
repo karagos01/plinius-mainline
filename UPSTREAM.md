@@ -56,6 +56,7 @@ závisí na dřívějších přes DTS).
 | G | WiFi (mt76/mt7921) | `7badf53` mt792x fw/dma, `9cda963` mt7921 tx_prepare move, `94b6250` mt7921 MT6878, `19cbe90` AP mode | závisí na F |
 | H | Bluetooth | `2a7035c` driver, `a836b57` BD addr, `518cc39` IRQ/fixup, `d7c9e03` PSM | závisí na F |
 | I | Modem (CCCI) | `562522` soc mtk-ccci | největší, nejvíc nitů |
+| K | MT6375 baterie (charger/gauge/adc) | `b5f7616` mfd core, `17ae8b2` iio adc, `70ee1c6` charger, `f16e849` gauge, `19fccd5` dts, `6450927`+`e9bf234` bindings | nezávislá, na i2c5; bindings ✅, device-tested ✅ |
 | J | DTS integrace | všechny `arch/arm64/.../mt6878*` a `volla-plinius*` | poslední, váže A–I |
 
 U-Boot: samostatná série do u-boot upstreamu (board `mt6878_plinius`) —
@@ -82,6 +83,10 @@ zatím mimo rozsah tohoto auditu.
 | `mediatek,mt6878-ccci` | nový | `soc/mediatek/mediatek,mt6878-ccci.yaml` | ✅ |
 | `mediatek,mt6878-disp-refresh` | nový | `soc/mediatek/mediatek,mt6878-disp-refresh.yaml` | ✅ |
 | `volla,plinius` + vendor `volla` | rozšířeno (+ nothing,tetris) | `arm/mediatek.yaml` + `vendor-prefixes.yaml` | ✅ |
+| `mediatek,mt6375` | nový | `mfd/mediatek,mt6375.yaml` (adc inline) | ✅ |
+| `mediatek,mt6375-charger` | nový | `power/supply/mediatek,mt6375-charger.yaml` | ✅ |
+| `mediatek,mt6375-gauge` | nový | `power/supply/mediatek,mt6375-gauge.yaml` | ✅ |
+| `mediatek,mt6375-adc` | nový (inline v MFD) | `mfd/mediatek,mt6375.yaml` | ✅ |
 
 **Driver-bindings hotové: 12/14.** Zbývá syscon rodina (infracfg-ao) a oprava
 mt6363.yaml — obojí v DTS-integračním backlogu níže.
