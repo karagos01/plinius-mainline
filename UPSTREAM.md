@@ -57,6 +57,7 @@ závisí na dřívějších přes DTS).
 | H | Bluetooth | `2a7035c` driver, `a836b57` BD addr, `518cc39` IRQ/fixup, `d7c9e03` PSM | závisí na F |
 | I | Modem (CCCI) | `562522` soc mtk-ccci | největší, nejvíc nitů |
 | K | MT6375 baterie (charger/gauge/adc) | `b5f7616` mfd core, `17ae8b2` iio adc, `70ee1c6` charger, `f16e849` gauge, `19fccd5` dts, `6450927`+`e9bf234` bindings | nezávislá, na i2c5; bindings ✅, device-tested ✅ |
+| L | Stabilita/QA | `48c4d32` mtk-ccci drop trace_printk; config (cpuidle PSCI, FUNCTION_TRACER off); `6f12477` thermal lvts mt6878 + `627d8b5` dts (throttling) | device-tested ✅; thermal nekalibrovaný (efuse=devinfo, dead end); dt-bindings lvts YAML TODO |
 | J | DTS integrace | všechny `arch/arm64/.../mt6878*` a `volla-plinius*` | poslední, váže A–I |
 
 U-Boot: samostatná série do u-boot upstreamu (board `mt6878_plinius`) —
