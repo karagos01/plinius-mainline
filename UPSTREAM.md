@@ -238,3 +238,11 @@ Konkrétní nity vytáhne `./scripts/checkpatch.pl --strict -g <commit>`.
   YAML. **Všechny čisté binding fixy portu jsou hotové** — zbytek chce tvoje
   rozhodnutí o per-SoC compatible / restrukturalizaci deployed uzlů, nebo dialog
   s upstream maintainery. Pak checkpatch nity (CCCI) + SoB/casing.
+- 2026-10-28: **GPS funguje na mainline** — reálný 3D fix (otevřená obloha,
+  ~5 SV, ~4–5 m). Checkpoint commitnut (local-only): eLNA L1/L5 pinctrl v DTS
+  (`plinius`) + R1 driver default na userspace-driven MVCD, in-kernel boot za
+  modul paramem (`plinius-gps-mt`). TTFF lever rozebrán (REA nad vendor
+  `libmnl.so`): čas aiding běží zadarmo (engine čte systémový NTP čas), jediná
+  zbývající páka = MD-TSX frekvenční aiding přes modem↔GPS IPC bridge
+  (nedosažitelné bez velkého driveru + naráží na zákaz modem-mem). ~95 s warm
+  start = praktické dno. Detaily viz `GPS.md`.
