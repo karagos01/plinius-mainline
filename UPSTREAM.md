@@ -114,9 +114,14 @@ bloky s jinými/navíc vlastnostmi, nebo mají jen „syscon" fallback:
   nevětví se podle compatible), DTS compatible + `ufsphy@`→`ufs-phy@` rename.
   dt_binding_check + dtbs_check čisté; behavior-neutral (driver bere clk/reset
   podle jména). Commity `8dec57b`(binding) `83b5f52`(driver) `653d2f4`(dts).
-- **USB** `xhci0@...` (`mediatek,mtk-xhci`) a `usb0@...` (`mediatek,mtu3`):
-  generické compatibly nejsou v enumu + nodename/`clock-names` neodpovídá.
-  Potřebují per-SoC compatible (`mediatek,mt6878-xhci`/`-mtu3`) nebo doplnění.
+- **USB** ✅ HOTOVO (2026-10-28): `mediatek,mt6878-mtu3` + `-xhci` compatibly
+  (s generickým fallbackem, který driver matchuje → BEZ driver patche), bindingy
+  `usb/mediatek,mtu3.yaml` (clock-names rozvolněno na unordered enum — driver bere
+  clk podle jména) + `mtk-xhci.yaml`, DTS nodename `usb@`, odstraněn bogus
+  `phy-cells`, `host_ck`→`xhci_ck` (downstream jméno co mainline driver nebere).
+  dt_binding_check + dtbs_check čisté. Commity `4b1c1e6`(binding) `2215f26`(dts).
+  POZN: změna živého RNDIS uzlu → vhodné ověřit reflashem (behavior: driver nově
+  spravuje xhci_ck, sys_ck/frmcnt_ck beze změny).
 - **tphy** `t-phy@11f40000` (`mediatek,mt6785-tphy`) nematchuje; souvisí
   s nálezem `mediatek,software-role-switch` missing type (viz Dílčí nálezy).
 - **topckgen** `syscon@10000000`: `hw-voter-regmap` není v bindingu.
@@ -258,7 +263,8 @@ Konkrétní nity vytáhne `./scripts/checkpatch.pl --strict -g <commit>`.
   Zbývajících 30 = jen ROZHODOVACÍ/dialogové, potvrzeno živostí na čipu:
   **UFS živé** (`/dev/sdc` 238 GB interní + host0) → VYŘEŠENO per-SoC compatible
   `mediatek,mt6878-ufshci` (binding+driver+dts, commity 8dec57b/83b5f52/653d2f4);
-  board 30→22,
+  **USB mtu3/xhci živé** (RNDIS UDC) → VYŘEŠENO `mt6878-mtu3`/`-xhci` s fallbackem
+  bez driver patche (4b1c1e6/2215f26); board 33→22→**13**,
   **USB mtu3 živé** (`11201000.usb0` = náš RNDIS UDC, generic `mediatek,mtu3` +
   `mtk-xhci` → chce `mt6878-mtu3`/`-xhci` + nodename usb@/usb0@), watchdog
   (syscon+reboot-mode, žádný mainline precedent), tphy (mt6785-tphy + port graph),
