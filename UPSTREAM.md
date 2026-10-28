@@ -108,9 +108,12 @@ bloky s jinými/navíc vlastnostmi, nebo mají jen „syscon" fallback:
   `infracfg-ao`, `pericfg-ao`, `ufscfg-ao`, `ufscfg-pdn`,
   `imp_iic_wrap-cs/ws/ess`. Každý má specifický compatible + `"syscon"` fallback.
   Doplnit je do příslušných mediatek syscon/infracfg bindings (nebo založit).
-- **UFS** `ufshci@112b0000` (`mediatek,mt8183-ufshci`): `clocks`/`clock-names`
-  too long (13 vs schema), chybí `vcc-supply`, `resets`/`reset-names` navíc.
-  Buď per-SoC compatible, nebo rozšířit mt8183-ufshci binding.
+- **UFS** ✅ HOTOVO (2026-10-28, per-SoC cestou): nový `mediatek,mt6878-ufshci`
+  compatible — binding `ufs/mediatek,ufs.yaml` rozšířen (13-clock větev, resets,
+  vcc-supply optional pro mt6878), driver `ufs-mediatek.c` match entry (bez dat,
+  nevětví se podle compatible), DTS compatible + `ufsphy@`→`ufs-phy@` rename.
+  dt_binding_check + dtbs_check čisté; behavior-neutral (driver bere clk/reset
+  podle jména). Commity `8dec57b`(binding) `83b5f52`(driver) `653d2f4`(dts).
 - **USB** `xhci0@...` (`mediatek,mtk-xhci`) a `usb0@...` (`mediatek,mtu3`):
   generické compatibly nejsou v enumu + nodename/`clock-names` neodpovídá.
   Potřebují per-SoC compatible (`mediatek,mt6878-xhci`/`-mtu3`) nebo doplnění.
@@ -253,8 +256,9 @@ Konkrétní nity vytáhne `./scripts/checkpatch.pl --strict -g <commit>`.
   **mt6878-gps** connsys GNSS (`3c7d264`). Plný board dtbs_check: **33 → 30**
   warningů. Driver-bindings 14/14 (všechny naše `.c` compatibly mají binding).
   Zbývajících 30 = jen ROZHODOVACÍ/dialogové, potvrzeno živostí na čipu:
-  **UFS živé** (`/dev/sdc` 238 GB interní + host0, mt8183-ufshci reuse: 13 clk,
-  resets, no vcc-supply → chce `mediatek,mt6878-ufshci` per-SoC binding+driver),
+  **UFS živé** (`/dev/sdc` 238 GB interní + host0) → VYŘEŠENO per-SoC compatible
+  `mediatek,mt6878-ufshci` (binding+driver+dts, commity 8dec57b/83b5f52/653d2f4);
+  board 30→22,
   **USB mtu3 živé** (`11201000.usb0` = náš RNDIS UDC, generic `mediatek,mtu3` +
   `mtk-xhci` → chce `mt6878-mtu3`/`-xhci` + nodename usb@/usb0@), watchdog
   (syscon+reboot-mode, žádný mainline precedent), tphy (mt6785-tphy + port graph),
