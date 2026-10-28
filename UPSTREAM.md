@@ -120,8 +120,11 @@ bloky s jinými/navíc vlastnostmi, nebo mají jen „syscon" fallback:
   clk podle jména) + `mtk-xhci.yaml`, DTS nodename `usb@`, odstraněn bogus
   `phy-cells`, `host_ck`→`xhci_ck` (downstream jméno co mainline driver nebere).
   dt_binding_check + dtbs_check čisté. Commity `4b1c1e6`(binding) `2215f26`(dts).
-  POZN: změna živého RNDIS uzlu → vhodné ověřit reflashem (behavior: driver nově
-  spravuje xhci_ck, sys_ck/frmcnt_ck beze změny).
+  **DEVICE-VERIFIED 2026-10-28 reflashem**: taint=0, RNDIS gadget jede (ssh přes
+  něj), mtu3 bound jako `11201000.usb`, compatible `mt6878-mtu3`. UFS zároveň
+  ověřeno: `/dev/sdc` 238 GB + host0 s `mt6878-ufshci`. Jediný log
+  `ufshci: Failed to get reset control mphy_rst: -2` = benigní pre-existing
+  (optional 4. reset není v DT; resety jsme neměnili).
 - **tphy** `t-phy@11f40000` (`mediatek,mt6785-tphy`) nematchuje; souvisí
   s nálezem `mediatek,software-role-switch` missing type (viz Dílčí nálezy).
 - **topckgen** `syscon@10000000`: `hw-voter-regmap` není v bindingu.
