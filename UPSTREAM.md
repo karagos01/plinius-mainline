@@ -282,3 +282,19 @@ Konkrétní nity vytáhne `./scripts/checkpatch.pl --strict -g <commit>`.
   behavior-neutral, commit `e3fec00`. Board **13→10→9**. Zbývá 9: watchdog (3),
   idle-states (2), mt6363-keys (2) = rozhodovací; ti,syscon-reset (2) = upstream
   gap, z naší strany nevyřešitelné čistě.
+- 2026-10-28 (rozhodovací balík, uživatel): **watchdog** → ZAHODIT reboot-mode +
+  "syscon" (žádný mainline precedent; mtk_wdt restart zůstává). `mt6878-wdt` do
+  mtk-wdt.yaml enumu + DTS cleanup + `#reset-cells`. Commity `205fd10`/`43f21fc`.
+  **mt6363-keys** → investigace opravila premisu: driver čte irq `platform_get_irq_byname`
+  z PARENT = UPSTREAM BASELINE (ne port divergence; paměť to měla špatně). Upstream
+  mt6358 keys nemá irq v DTS (dodá MFD); mt6363 SPMI je potřebuje explicitně na
+  parent, kde je driver čte. Takže NE restrukturalizace (ta by odklonila driver od
+  baseline + riziko power key), ale OPRAVA bindingu: `interrupts`/`interrupt-names`
+  povoleny na parent v pmic-keys.yaml. Jen binding, bez DTS/driver/reflash. Commit
+  `7283330`. **idle-states** → NECHAT (2 warningy): hluboké stavy device-measured
+  hojně používané (usage system-vcore 15851, mcusysoff 8261); zahodit = regrese
+  spotřeby; čistý fix = rozšířit core ARM idle-states.yaml = mimo rozsah.
+  **FINÁLNÍ STAV board dtbs_check: 33 → 4.** Zbylé 4 = idle-states (2, záměrně
+  ponecháno) + ti,syscon-reset (2, upstream gap bez YAML). **Vše v naší režii je
+  hotové.** Driver-bindings 14/14 + rozšířeno 6 existujících (ufs/mtu3/xhci/tphy/
+  wdt/pmic-keys) + lvts + gps. UFS/USB device-verified reflashem.
