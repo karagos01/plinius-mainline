@@ -276,3 +276,9 @@ Konkrétní nity vytáhne `./scripts/checkpatch.pl --strict -g <commit>`.
   (syscon+reboot-mode, žádný mainline precedent), tphy (mt6785-tphy + port graph),
   idle-states (custom názvy + entry-method ≠ psci), mt6363-keys (parent-vs-child
   irq), soc/pinctrl ranges. Upstream gap (ne naše): ti,syscon-reset bez YAML (2).
+- 2026-10-28 (pokrač.): **tphy** ✅ (`mt6878-tphy` + port graph, viz výše) a
+  **soc/pinctrl ranges** ✅ — pinctrl uzel dostal unit-adresu `pinctrl@10005000`
+  (měl reg bez @adresy → simple-bus ho bral jako sub-bus a chtěl ranges);
+  behavior-neutral, commit `e3fec00`. Board **13→10→9**. Zbývá 9: watchdog (3),
+  idle-states (2), mt6363-keys (2) = rozhodovací; ti,syscon-reset (2) = upstream
+  gap, z naší strany nevyřešitelné čistě.
