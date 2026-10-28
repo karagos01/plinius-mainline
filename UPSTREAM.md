@@ -57,7 +57,7 @@ závisí na dřívějších přes DTS).
 | H | Bluetooth | `2a7035c` driver, `a836b57` BD addr, `518cc39` IRQ/fixup, `d7c9e03` PSM | závisí na F |
 | I | Modem (CCCI) | `562522` soc mtk-ccci | největší, nejvíc nitů |
 | K | MT6375 baterie (charger/gauge/adc) | `b5f7616` mfd core, `17ae8b2` iio adc, `70ee1c6` charger, `f16e849` gauge, `19fccd5` dts, `6450927`+`e9bf234` bindings | nezávislá, na i2c5; bindings ✅, device-tested ✅ |
-| L | Stabilita/QA | `48c4d32` mtk-ccci drop trace_printk; config (cpuidle PSCI, FUNCTION_TRACER off); `6f12477` thermal lvts mt6878 + `627d8b5` dts (throttling) | device-tested ✅; thermal nekalibrovaný (efuse=devinfo, dead end); dt-bindings lvts YAML TODO |
+| L | Stabilita/QA | `48c4d32` mtk-ccci drop trace_printk; config (cpuidle PSCI, FUNCTION_TRACER off); `6f12477` thermal lvts mt6878 + `627d8b5` dts (throttling); **RTC MT6685**: `0c5f904` rtc driver + `9c19c7c` dts + `644b429` mfd SCK_TOP irq-domain + `e939268` rtc alarm + `969f1a9` dts alarm + `8b5797d` dt-bindings | device-tested ✅ (RTC time+alarm, persistence přes power-cycle); thermal nekalibrovaný (efuse=devinfo, dead end); RTC binding ✅; dt-bindings lvts YAML TODO |
 | J | DTS integrace | všechny `arch/arm64/.../mt6878*` a `volla-plinius*` | poslední, váže A–I |
 
 U-Boot: samostatná série do u-boot upstreamu (board `mt6878_plinius`) —
@@ -74,7 +74,8 @@ zatím mimo rozsah tohoto auditu.
 | `mediatek,mt6363-keys` | rozšířeno | `input/mediatek,pmic-keys.yaml` + keys v mt6363.yaml | ✅ |
 | `mediatek,mt6363-regulator` | existuje | `regulator/mediatek,mt6363-regulator.yaml` | ✅ |
 | `mediatek,mt6369-regulator` | nový | `regulator/mediatek,mt6369-regulator.yaml` | ✅ |
-| `mediatek,mt6685` | nový | `mfd/mediatek,mt6685.yaml` | ✅ |
+| `mediatek,mt6685` | nový (+ RTC child + interrupt-controller) | `mfd/mediatek,mt6685.yaml` | ✅ |
+| `mediatek,mt6685-rtc` | nový (child v mt6685 mfd) | `mfd/mediatek,mt6685.yaml` | ✅ |
 | `mediatek,mt6878-spmi` | rozšířeno (+ interrupty) | `spmi/mtk,spmi-mtk-pmif.yaml` | ✅ |
 | `mediatek,mt6878-power-controller` | rozšířeno | `power/mediatek,power-controller.yaml` | ✅ |
 | `mediatek,mt6878-infracfg-ao` | rozšířit | `clock/mediatek,infracfg.yaml` (syscon) | ❌ (viz syscon rodina) |
