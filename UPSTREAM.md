@@ -302,3 +302,9 @@ Konkrétní nity vytáhne `./scripts/checkpatch.pl --strict -g <commit>`.
   ponecháno) + ti,syscon-reset (2, upstream gap bez YAML). **Vše v naší režii je
   hotové.** Driver-bindings 14/14 + rozšířeno 6 existujících (ufs/mtu3/xhci/tphy/
   wdt/pmic-keys) + lvts + gps. UFS/USB device-verified reflashem.
+- 2026-10-28: **watchdog cleanup device-verified** reflashem (`out/boot-debian.img`
+  → `vendor_boot_b`). Boot OK na první pokus, taint=0; živý DTB `watchdog@1c00a000`
+  = `mt6878-wdt`+`mt6589-wdt`, `#reset-cells=1`, reboot-mode child pryč; `mtk-wdt`
+  probnul („Watchdog enabled, timeout=31 sec"), restart handler z mtk_wdt; cpuidle
+  hluboké stavy (mcusysoff/system-vcore) dál používané, žádná regrese. Žádné nové
+  dmesg chyby z té změny.
