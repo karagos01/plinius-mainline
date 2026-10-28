@@ -57,7 +57,7 @@ závisí na dřívějších přes DTS).
 | H | Bluetooth | `2a7035c` driver, `a836b57` BD addr, `518cc39` IRQ/fixup, `d7c9e03` PSM | závisí na F |
 | I | Modem (CCCI) | `562522` soc mtk-ccci | největší, nejvíc nitů |
 | K | MT6375 baterie (charger/gauge/adc) | `b5f7616` mfd core, `17ae8b2` iio adc, `70ee1c6` charger, `f16e849` gauge, `19fccd5` dts, `6450927`+`e9bf234` bindings | nezávislá, na i2c5; bindings ✅, device-tested ✅ |
-| L | Stabilita/QA | `48c4d32` mtk-ccci drop trace_printk; config (cpuidle PSCI, FUNCTION_TRACER off); `6f12477` thermal lvts mt6878 + `627d8b5` dts (throttling); **RTC MT6685**: `0c5f904` rtc driver + `9c19c7c` dts + `644b429` mfd SCK_TOP irq-domain + `e939268` rtc alarm + `969f1a9` dts alarm + `8b5797d` dt-bindings | device-tested ✅ (RTC time+alarm, persistence přes power-cycle); thermal nekalibrovaný (efuse=devinfo, dead end); RTC binding ✅; dt-bindings lvts YAML TODO |
+| L | Stabilita/QA | `48c4d32` mtk-ccci drop trace_printk; config (cpuidle PSCI, FUNCTION_TRACER off); `6f12477` thermal lvts mt6878 + `627d8b5` dts (throttling) + `37500d0` dt-bindings lvts mt6878; **RTC MT6685**: `0c5f904` rtc driver + `9c19c7c` dts + `644b429` mfd SCK_TOP irq-domain + `e939268` rtc alarm + `969f1a9` dts alarm + `8b5797d` dt-bindings | device-tested ✅ (RTC time+alarm, persistence přes power-cycle); thermal nekalibrovaný (efuse=devinfo, dead end); RTC binding ✅; **lvts binding ✅** (mt6878-lvts-ap/-mcu, clocks/resets/nvmem optional pro mt6878) |
 | J | DTS integrace | všechny `arch/arm64/.../mt6878*` a `volla-plinius*` | poslední, váže A–I |
 
 U-Boot: samostatná série do u-boot upstreamu (board `mt6878_plinius`) —
@@ -247,3 +247,16 @@ Konkrétní nity vytáhne `./scripts/checkpatch.pl --strict -g <commit>`.
   zbývající páka = MD-TSX frekvenční aiding přes modem↔GPS IPC bridge
   (nedosažitelné bez velkého driveru + naráží na zákaz modem-mem). ~95 s warm
   start = praktické dno. Detaily viz `GPS.md`.
+- 2026-10-28 (bod 2 další dávka): tři nové bindingy, všechny dt_binding_check +
+  dtbs_check čisté, pushnuto na `plinius`: **mt6685 RTC** child + interrupt-ctrl
+  (`8b5797d`), **lvts mt6878-ap/-mcu** (`37500d0`, clocks/resets/nvmem optional),
+  **mt6878-gps** connsys GNSS (`3c7d264`). Plný board dtbs_check: **33 → 30**
+  warningů. Driver-bindings 14/14 (všechny naše `.c` compatibly mají binding).
+  Zbývajících 30 = jen ROZHODOVACÍ/dialogové, potvrzeno živostí na čipu:
+  **UFS živé** (`/dev/sdc` 238 GB interní + host0, mt8183-ufshci reuse: 13 clk,
+  resets, no vcc-supply → chce `mediatek,mt6878-ufshci` per-SoC binding+driver),
+  **USB mtu3 živé** (`11201000.usb0` = náš RNDIS UDC, generic `mediatek,mtu3` +
+  `mtk-xhci` → chce `mt6878-mtu3`/`-xhci` + nodename usb@/usb0@), watchdog
+  (syscon+reboot-mode, žádný mainline precedent), tphy (mt6785-tphy + port graph),
+  idle-states (custom názvy + entry-method ≠ psci), mt6363-keys (parent-vs-child
+  irq), soc/pinctrl ranges. Upstream gap (ne naše): ti,syscon-reset bez YAML (2).
