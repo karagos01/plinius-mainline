@@ -125,8 +125,11 @@ bloky s jinými/navíc vlastnostmi, nebo mají jen „syscon" fallback:
   ověřeno: `/dev/sdc` 238 GB + host0 s `mt6878-ufshci`. Jediný log
   `ufshci: Failed to get reset control mphy_rst: -2` = benigní pre-existing
   (optional 4. reset není v DT; resety jsme neměnili).
-- **tphy** `t-phy@11f40000` (`mediatek,mt6785-tphy`) nematchuje; souvisí
-  s nálezem `mediatek,software-role-switch` missing type (viz Dílčí nálezy).
+- **tphy** ✅ HOTOVO (2026-10-28): `mediatek,mt6878-tphy` (generic-tphy-v2
+  instance) místo placeholderu `mt6785-tphy`; binding dostal `port` graph do
+  usb-phy child (software-role-switch ho vyžaduje, ale chyběl). Driver matchuje
+  generic-tphy-v2 fallback → bez patche, behavior-neutral. dt_binding_check +
+  dtbs_check čisté. Commity `3f3709f`(binding) `5349100`(dts). board 13→10.
 - **topckgen** `syscon@10000000`: `hw-voter-regmap` není v bindingu.
 - **watchdog** `watchdog@1c00a000` (`mediatek,mt6878-wdt`): `reboot-mode`
   navíc + compatible oneOf; doplnit mt6878-wdt do mtk-wdt bindingu.
