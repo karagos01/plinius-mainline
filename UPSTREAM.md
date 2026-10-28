@@ -25,15 +25,19 @@ root `12f2e9f04`. U-Boot port je samostatný strom (viz níže).
 
 - [ ] **maintainer v bindings** — zatím `Kara <karagos01@gmail.com>` (bez
   příjmení). Před submission doplnit celé jméno.
-- [ ] **`Signed-off-by:`** — mainline ho vyžaduje na každém commitu. Teď
-  commity mají jen `Co-Authored-By:`. Před odesláním přidat SoB autora
-  (`git rebase --signoff` nebo za každou zprávu).
-- [ ] **`Co-authored-by:` casing** — checkpatch hlásí „Non-standard
-  signature". Mainline chce malé `Co-authored-by:`. (Náš harness generuje
-  `Co-Authored-By:`; při přípravě k submission přepsat na malé.)
-- [ ] **checkpatch `--strict`** — projet znovu po úklidu nitů (viz tabulka).
-  Stav teď: **0 errors** napříč všemi 36 commity; warnings jsou z větší
-  části jen ty dvě atribuční (= fakticky čisté).
+- [x] **`Signed-off-by:`** ✅ (2026-10-28, globální finále) — přidáno na všech
+  **96** port commitů (`12f2e9f04..plinius`) přes `git filter-branch --msg-filter`:
+  `Signed-off-by: kara <karagos01@gmail.com>` (z git config; jméno je placeholder,
+  jako maintainer line — doladit při reálném submission). Tree beze změny (jen
+  zprávy). Backup větev `plinius-pre-sob` (local). Force-pushnuto na fork/plinius.
+- [x] **`Co-authored-by:` casing** ✅ (tamtéž) — `Co-Authored-By:`→`Co-authored-by:`
+  na všech 96. checkpatch to potvrzuje jako „preferred signature form". POZN:
+  `Co-authored-by` NENÍ kernel-standard tag (kernel má `Co-developed-by:`), takže
+  checkpatch VŽDY nechá 1 warning „Non-standard signature" — to je nevyhnutelné,
+  atribuční řádku vyžaduje harness. Lowercase ale odstraní extra „preferred form"
+  warning + SoB odstraní error. Per-commit: **1 err/3 warn → 0 err/1–2 warn**.
+- [x] **checkpatch** ✅ — po finále **0 errors** na commit; zbylý 1 warning =
+  nevyhnutelný non-standard `Co-authored-by` (atribuce). Fakticky čisté.
 - [ ] **`dtbs_check` / `dt_binding_check`** — spustit po dopsání bindings:
   `make -C <linux> O=<build> ARCH=arm64 LLVM=1 dt_binding_check dtbs_check`.
 - [ ] **MAINTAINERS** — nové `.c` spadají pod existující subsystémové sekce
