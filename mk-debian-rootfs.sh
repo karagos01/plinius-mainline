@@ -67,6 +67,16 @@ if [ -f "$PUBKEY" ]; then
 	install -m 600 "$PUBKEY" $R/root/.ssh/authorized_keys
 fi
 
+# Hardware watchdog: let systemd arm /dev/watchdog (mtk-wdt) so a wedged system
+# resets itself. systemd pings at half of RuntimeWatchdogSec, well inside the
+# 31s HW timeout; RebootWatchdogSec bounds a hung shutdown.
+install -d $R/etc/systemd/system.conf.d
+cat > $R/etc/systemd/system.conf.d/watchdog.conf <<'EOF'
+[Manager]
+RuntimeWatchdogSec=20s
+RebootWatchdogSec=2min
+EOF
+
 # Root autologin on the UART and USB ACM consoles
 for tty in serial-getty@ttyS0 serial-getty@ttyGS0; do
 	install -d $R/etc/systemd/system/$tty.service.d
