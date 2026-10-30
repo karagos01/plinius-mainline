@@ -1,81 +1,83 @@
-# GNSS/GPS na mainline (MT6878 connsys)
+# GNSS/GPS on mainline (MT6878 connsys)
 
-Stav: **funguje — reálný 3D fix na mainline.** Tento dokument shrnuje, jak
-to běží, a kde je strop (TTFF) a proč.
+Status: **works — a real 3D fix on mainline.** This document summarizes how it
+runs, and where the ceiling (TTFF) is and why.
 
-## Architektura
+## Architecture
 
-GPS je 3. connsys subsystém (vedle WiFi a BT, sdílený A-die MT6637). Řetězec:
+GPS is the 3rd connsys subsystem (alongside WiFi and BT, sharing the A-die
+MT6637). The chain:
 
 ```
 /dev/gpsdl0 (mtk-connsys-gnss, char dev)
-   └─ stock gpsdl ioctl ABI  ← drží ji libmnl (MTK PVT engine) z userspace
-        └─ connsys GPS L1 DSP (RAM image přes MVCD/SMC do TF-A)
+   └─ stock gpsdl ioctl ABI  ← held by libmnl (MTK PVT engine) from userspace
+        └─ connsys GPS L1 DSP (RAM image via MVCD/SMC into TF-A)
 ```
 
-- **Kernel driver**: `drivers/soc/mediatek/mtk-connsys-gnss.c` (větev
-  `plinius-gps-mt`). `open()` vyveze link0 na RESET_DONE, nahodí reaktivní
-  D2A drain a IRQ; **MVCD download RAM image nechává na userspace** (stock
-  `mnld`/`libmnl`), což je cesta, která dala první fix. In-kernel boot
-  (MVCD přes SMC/TF-A) je zachován za modul paramem `inkernel_boot=1`.
-- **Userspace**: MediaTek `libmnl.so` (PVT engine) spuštěná přes Android
-  NDK `linker64` tenkým hostem `mnl_host`. Host registruje callback
-  tabulku (NMEA ven) a volá `mtk_gps_mnl_run()`. Config + NVRAM v
+- **Kernel driver**: `drivers/soc/mediatek/mtk-connsys-gnss.c` (branch
+  `plinius-gps-mt`). `open()` brings link0 to RESET_DONE, sets up the reactive
+  D2A drain and IRQ; **it leaves the MVCD RAM-image download to userspace** (stock
+  `mnld`/`libmnl`), which is the path that produced the first fix. In-kernel boot
+  (MVCD via SMC/TF-A) is kept behind the module param `inkernel_boot=1`.
+- **Userspace**: MediaTek `libmnl.so` (PVT engine) run via the Android NDK
+  `linker64` with a thin host `mnl_host`. The host registers a callback table
+  (NMEA out) and calls `mtk_gps_mnl_run()`. Config + NVRAM in
   `/data/vendor/gps/` (`MNL_Config.xml`, `mtkgps.dat`).
-- **eLNA**: externí GPS L1/L5 eLNA na GPIO186/187. Permanentně nahozené
-  přes **pinctrl v DT** (`gps_elna_pins`, `output-high` na gnss uzlu).
-  Bez nich DSP viděl málo/žádné satelity (AGC na max zisku).
+- **eLNA**: an external GPS L1/L5 eLNA on GPIO186/187. Permanently raised via
+  **pinctrl in DT** (`gps_elna_pins`, `output-high` on the gnss node). Without
+  them the DSP saw few/no satellites (AGC at max gain).
 
-## Výsledek
+## Result
 
-Otevřená obloha: **$GNGSA,A,3** (3D fix), ~5 SV použito, HDOP ~1.3–1.5,
-horizontální přesnost **~4–5 m**, plný 1 Hz NMEA stream
-($GPGGA/RMC/GSA/GSV + PMTK diagnostika).
+Open sky: **$GNGSA,A,3** (3D fix), ~5 SV used, HDOP ~1.3–1.5, horizontal
+accuracy **~4–5 m**, a full 1 Hz NMEA stream ($GPGGA/RMC/GSA/GSV + PMTK
+diagnostics).
 
-## TTFF a aiding — co jde a co ne
+## TTFF and aiding — what works and what doesn't
 
-Vendor stack má v `MNL_Config.xml` zapnuté všechny aiding featury
-(MDTime, Time_Source, CoTMS, MD-TSX). Náš host je ale záměrně tenký a
-krmí jen NMEA callback. Rozbor (REA nad vendor `libmnl.so`) ukázal dvě
-oddělené větve aidingu:
+The vendor stack has all aiding features enabled in `MNL_Config.xml` (MDTime,
+Time_Source, CoTMS, MD-TSX). Our host, however, is deliberately thin and only
+feeds the NMEA callback. Analysis (REA over the vendor `libmnl.so`) showed two
+separate aiding branches:
 
-1. **Čas (coarse UTC) — řešeno zadarmo.** Engine čte systémový čas přímo:
-   `hal_sys_time_get` → `mnl_sys_time_read` → libc `time()` + `gmtime()`.
-   Telefon je NTP-synced (systemd-timesyncd), takže engine dostane přesný
-   čas bez modemu. To je důvod, proč **warm start funguje**: persistovaná
-   ephemeris v `mtkgps.dat` + správný systémový čas → okamžitě použitelná.
-   (`"RTC NoRead"` v logu = nenaplněný **hardwarový RTC GNSS čipu**, ne
-   Linux hodiny — neškodné.) Push API `mtk_gps_set_time()` existuje, ale
-   je redundantní.
+1. **Time (coarse UTC) — handled for free.** The engine reads the system time
+   directly: `hal_sys_time_get` → `mnl_sys_time_read` → libc `time()` +
+   `gmtime()`. The phone is NTP-synced (systemd-timesyncd), so the engine gets an
+   accurate time without the modem. That is why **warm start works**: persisted
+   ephemeris in `mtkgps.dat` + the correct system time → immediately usable.
+   (`"RTC NoRead"` in the log = the unpopulated **hardware RTC of the GNSS chip**,
+   not the Linux clock — harmless.) The push API `mtk_gps_set_time()` exists, but
+   is redundant.
 
-2. **Frekvence (MD-TSX) — jediná zbývající páka, blokovaná.** To, co by
-   zkrátilo TTFF k vendor úrovni (~44 s), je kontinuální TCXO S-křivka z
-   **modemu** (`md_tsx_req` / callback `MTK_AGPS_CB_MD_TSX_DATA_SYNC_REQ`
-   / `mtk_gps_tsx_get_md_scurve`). Modem má TCXO disciplinovaný buňkovou
-   sítí; sdílením téhle frekvenční reference engine udrží nosnou
-   stabilnější → ephemeris subrámce dekódují bez bitových chyb → kratší
-   TTFF. Bez toho GPS běží na vlastním connsys krystalu (funguje, jen s
-   větší frekvenční nejistotou → pomalejší dekód ephemeris).
+2. **Frequency (MD-TSX) — the only remaining lever, blocked.** What would shorten
+   TTFF to the vendor level (~44 s) is the continuous TCXO S-curve from the
+   **modem** (`md_tsx_req` / callback `MTK_AGPS_CB_MD_TSX_DATA_SYNC_REQ` /
+   `mtk_gps_tsx_get_md_scurve`). The modem has its TCXO disciplined by the
+   cellular network; by sharing this frequency reference the engine keeps the
+   carrier more stable → the ephemeris subframes decode without bit errors →
+   shorter TTFF. Without it, GPS runs on its own connsys crystal (works, just with
+   larger frequency uncertainty → slower ephemeris decode).
 
-### Proč MD-TSX teď nejde
+### Why MD-TSX doesn't work now
 
-- Data tečou přes **connsys↔modem (MD) hardwarové IPC**, které na mainline
-  **neexistuje** — byl by to samostatný modem↔GPS IPC driver (velký).
-- Přístup do paměti modemu je u tohoto portu **zakázaný** (zamrzá/resetuje
-  telefon) — bezpečnostní strop bring-upu.
-- Frekvenční offset navíc neumíme sami změřit; engine si ho učí sám
-  (TSXPoly) a persistuje v `mtkgps.dat`, což přesně dělá warm start.
+- The data flows over the **connsys↔modem (MD) hardware IPC**, which **does not
+  exist** on mainline — it would be a separate modem↔GPS IPC driver (large).
+- Access to modem memory is **forbidden** on this port (it freezes/resets the
+  phone) — a safety ceiling of the bring-up.
+- Besides, we can't measure the frequency offset ourselves; the engine learns it
+  on its own (TSXPoly) and persists it in `mtkgps.dat`, which is exactly what
+  warm start does.
 
-### Shrnutí
+### Summary
 
-| Lever | Stav |
-|-------|------|
-| eLNA L1/L5 (GPIO186/187) | ✅ v DT (pinctrl output-high) |
-| Warm/hot start (persist `mtkgps.dat`) | ✅ ~95 s, 3× rychlejší než cold |
-| Čas (systémový NTP → engine) | ✅ automaticky |
-| EPO (predikované dráhy) | ❌ download 403 (chce MTK partner auth) |
-| MD-TSX frekvenční aiding | ⛔ chce modem↔GPS IPC bridge (budoucí, velký) + naráží na zákaz modem-mem |
+| Lever | Status |
+|-------|--------|
+| eLNA L1/L5 (GPIO186/187) | ✅ in DT (pinctrl output-high) |
+| Warm/hot start (persisted `mtkgps.dat`) | ✅ ~95 s, 3× faster than cold |
+| Time (system NTP → engine) | ✅ automatic |
+| EPO (predicted orbits) | ❌ download 403 (needs MTK partner auth) |
+| MD-TSX frequency aiding | ⛔ needs a modem↔GPS IPC bridge (future, large) + hits the modem-mem ban |
 
-**Závěr:** ~95 s warm start je praktické dno mainline userspace stacku.
-Uzavření mezery k vendor ~44 s vyžaduje modem↔GPS IPC bridge — samostatný
-budoucí projekt, mimo rozsah bezpečného bring-upu.
+**Conclusion:** ~95 s warm start is the practical floor of the mainline userspace
+stack. Closing the gap to the vendor's ~44 s requires a modem↔GPS IPC bridge — a
+separate future project, out of scope for the safe bring-up.
