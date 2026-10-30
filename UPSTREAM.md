@@ -23,8 +23,12 @@ root `12f2e9f04`. U-Boot port je samostatný strom (viz níže).
 
 ## Globální úkoly (platí pro všechny commity)
 
-- [ ] **maintainer v bindings** — zatím `Kara <karagos01@gmail.com>` (bez
-  příjmení). Před submission doplnit celé jméno.
+- [x] **maintainer v bindings + MAINTAINERS** ✅ (2026-10-30, kernel commit
+  `72bcbbbec`) — placeholder `Kara` → `Jan Benedikt <karagos01@gmail.com>` ve
+  všech 12 nových bindings `maintainers:` + 4 MAINTAINERS `M:` řádcích (13 souborů).
+  POZN: `Signed-off-by:`/git-author v commitech je pořád `kara <karagos01@gmail.com>`
+  — pro reálný DCO submission by chtělo přepsat i je na `Jan Benedikt` (120-commit
+  filter-branch + force-push), zatím NEprovedeno.
 - [x] **`Signed-off-by:`** ✅ (2026-10-28, globální finále) — přidáno na všech
   **96** port commitů (`12f2e9f04..plinius`) přes `git filter-branch --msg-filter`:
   `Signed-off-by: kara <karagos01@gmail.com>` (z git config; jméno je placeholder,
