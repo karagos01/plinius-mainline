@@ -40,9 +40,14 @@ root `12f2e9f04`. U-Boot port je samostatný strom (viz níže).
   nevyhnutelný non-standard `Co-authored-by` (atribuce). Fakticky čisté.
 - [ ] **`dtbs_check` / `dt_binding_check`** — spustit po dopsání bindings:
   `make -C <linux> O=<build> ARCH=arm64 LLVM=1 dt_binding_check dtbs_check`.
-- [ ] **MAINTAINERS** — nové `.c` spadají pod existující subsystémové sekce
-  (MediaTek SoC, Bluetooth, regulator, mfd…), takže nové sekce skoro
-  netřeba. Zvážit `F:` řádky pro nové soubory a board entry pro Vollu.
+- [x] **MAINTAINERS** ✅ (2026-10-30) — 4 dedikované sekce přidány (commit
+  `0ca475646`): MT6363/MT6685 SPMI PMIC + RTC, MT6369 regulátor, MT6375 SubPMIC
+  (mfd/adc/charger/gauge), a MT6878 SoC + Volla Phone Plinius (connsys/ccci/gnss/
+  disp-refresh/scp + board DTS). `F:` řádky seřazené, sekce v abecední pozici
+  (MT6363<6369<6375<6735<6878<76). Ověřeno `get_maintainer.pl`: všechny nové
+  soubory se teď resolvují na autora (dřív jen na generické subsystémové
+  maintainery). checkpatch 0 err / jen atribuční warn. Jméno = stejný placeholder
+  `Kara <karagos01@gmail.com>` jako v bindings — doplnit celé jméno při submission.
 
 ## Patch série (doporučené pořadí dle závislostí)
 
@@ -302,6 +307,17 @@ Konkrétní nity vytáhne `./scripts/checkpatch.pl --strict -g <commit>`.
   ponecháno) + ti,syscon-reset (2, upstream gap bez YAML). **Vše v naší režii je
   hotové.** Driver-bindings 14/14 + rozšířeno 6 existujících (ufs/mtu3/xhci/tphy/
   wdt/pmic-keys) + lvts + gps. UFS/USB device-verified reflashem.
+- 2026-10-30: **MAINTAINERS entries** přidány (commit `0ca475646`, viz globální
+  úkoly výše) — 4 nové sekce, všechny nové soubory se resolvují na autora. Audit
+  checkpatch přes všech 120 commitů: **0 errors**, zbytek = ~100 warn / ~81 check,
+  ale histogram typů ukazuje, že jde převážně o šum/CHECK-level/false-positive
+  (pointer `*` alignment, macro-arg reuse, usleep_range CHECK v místech kde část
+  udelay je v atomic kontextu, commit-message line-wrap) + 29× právě ten
+  MAINTAINERS reminder (teď adresováno). **Reálný zbytek bodu 2 = (a) tvoje celé
+  jméno** (blokuje maintainer line v bindings i v MAINTAINERS), **(b)** volitelný
+  mikro-úklid checkpatch nitů (bisect-riskantní rebase přes 65 commitů, nízká
+  hodnota), **(c)** záměrně ponechané idle-states (2) + upstream ti,syscon-reset
+  gap (2). Čisté binding fixy, SoB, casing, dtbs_check 33→4 = hotové.
 - 2026-10-28: **watchdog cleanup device-verified** reflashem (`out/boot-debian.img`
   → `vendor_boot_b`). Boot OK na první pokus, taint=0; živý DTB `watchdog@1c00a000`
   = `mt6878-wdt`+`mt6589-wdt`, `#reset-cells=1`, reboot-mode child pryč; `mtk-wdt`
