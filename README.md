@@ -1,78 +1,81 @@
 # Volla Phone Plinius — mainline Linux port
 
-Port mainline Linuxu (a U-Bootu) na **Volla Phone Plinius**, telefon s SoC
-**MediaTek MT6878**. Telefon sám nabootuje Debian z microSD karty a funguje
-na něm WiFi, mobilní data, SMS i Bluetooth — všechno přes mainline ovladače,
-bez downstream kernelu.
+A mainline Linux (and U-Boot) port for the **Volla Phone Plinius**, a phone with
+the **MediaTek MT6878** SoC. The phone boots Debian from a microSD card on its
+own, with working WiFi, mobile data, SMS and Bluetooth — all through mainline
+drivers, with no downstream kernel.
 
-Tenhle repozitář (`plinius-mainline`) drží **buildovací skripty, kernel
-konfiguraci a runtime nástroje**. Samotné zdrojáky kernelu a U-Bootu jsou
-ve dvou samostatných forcích (viz níže).
+This repository (`plinius-mainline`) holds the **build scripts, kernel
+configuration and runtime tools**. The kernel and U-Boot sources themselves live
+in two separate forks (see below).
 
-## Repozitáře
+## Repositories
 
-| Repo | Větev | Obsah |
+| Repo | Branch | Contents |
 |---|---|---|
-| **[karagos01/linux](https://github.com/karagos01/linux)** | `plinius` | kernel — DTS, ovladače (connsys WiFi/BT, CCCI modem, MSDC) |
-| **[karagos01/u-boot](https://github.com/karagos01/u-boot)** | `plinius` | bootloader — board support Plinius, boot z `vendor_boot_b` |
-| **karagos01/plinius-mainline** (tento) | `main` | `build.sh`, `configs/linux.config`, balení/flashování boot image, runtime (modem/data/SMS/hotspot) |
+| **[karagos01/linux](https://github.com/karagos01/linux)** | `plinius` | kernel — DTS, drivers (connsys WiFi/BT, CCCI modem, MSDC) |
+| **[karagos01/u-boot](https://github.com/karagos01/u-boot)** | `plinius` | bootloader — Plinius board support, boot from `vendor_boot_b` |
+| **karagos01/plinius-mainline** (this one) | `main` | `build.sh`, `configs/linux.config`, boot-image packaging/flashing, runtime (modem/data/SMS/hotspot) |
 
-Oba kernely jsou forky příslušných `MT6878-Mainline/*` repů (zachovaná vazba
-na upstream); výchozí větev je u obou nastavená na `plinius`.
+Both kernels are forks of the respective `MT6878-Mainline/*` repos (the link to
+upstream is preserved); the default branch is set to `plinius` on both.
 
-## Co funguje
+## What works
 
-| Subsystém | Stav | Poznámka |
+| Subsystem | Status | Note |
 |---|---|---|
-| Boot chain | ✅ | stock LK → U-Boot (`boot_a`) → Linux (`vendor_boot_b`) → `switch_root` na microSD |
-| microSD (MSDC1) | ✅ | SDR104; klíčový fix `no_src_clk_gate` |
-| Debian | ✅ | Debian trixie z microSD (`root=LABEL=plinius`) |
-| USB gadget | ✅ | NCM síť `172.16.42.1` + ACM konzole z initramfs |
-| WiFi STA | ✅ | mainline mt76 / mt7921 nad connsys |
+| Boot chain | ✅ | stock LK → U-Boot (`boot_a`) → Linux (`vendor_boot_b`) → `switch_root` to microSD |
+| microSD (MSDC1) | ✅ | SDR104; key fix `no_src_clk_gate` |
+| Debian | ✅ | Debian trixie from microSD (`root=LABEL=plinius`) |
+| USB gadget | ✅ | NCM network `172.16.42.1` + ACM console from initramfs |
+| WiFi STA | ✅ | mainline mt76 / mt7921 over connsys |
 | WiFi AP / hotspot | ✅ | `hotspot.sh` + hostapd |
-| Modem — SIM/radio | ✅ | CCCI ovladač, SIM, registrace do sítě |
-| Mobilní data | ✅ | LTE, NetAgent EIF (`mobile-data.py`) |
-| SMS | ✅ | příjem i odesílání (`sms.py`) |
-| Bluetooth BR/EDR + LE | ✅ | vlastní `btmtk_connsys` ovladač (BGF subsystém, BEIF EMI-ring, WMT); scan, párování, A2DP audio, IRQ-driven RX |
+| Modem — SIM/radio | ✅ | CCCI driver, SIM, network registration |
+| Mobile data | ✅ | LTE, NetAgent EIF (`mobile-data.py`) |
+| SMS | ✅ | receive and send (`sms.py`) |
+| Bluetooth BR/EDR + LE | ✅ | custom `btmtk_connsys` driver (BGF subsystem, BEIF EMI-ring, WMT); scan, pairing, A2DP audio, IRQ-driven RX |
 
-## Jak telefon bootuje
+## How the phone boots
 
 ```
 preloader → stock LK → boot_a = U-Boot → vendor_boot_b = Linux + initramfs
-                                          → switch_root na microSD (LABEL=plinius)
+                                          → switch_root to microSD (LABEL=plinius)
 ```
 
-- **LK zůstává stock.** U-Boot je zabalený jako boot image v `boot_a`.
-- U-Boot po krátkém odpočtu načte Linux z `vendor_boot_b`; při neúspěchu jde
-  do fastboot (Volume Up = menu).
-- Initramfs (Alpine) nahodí USB gadget a přepne na Debian z karty.
-- **Slot B je prázdný** — `vendor_boot_b` slouží jen jako úložiště boot image.
+- **LK stays stock.** U-Boot is packed as a boot image in `boot_a`.
+- After a short countdown U-Boot loads Linux from `vendor_boot_b`; on failure it
+  drops into fastboot (Volume Up = menu).
+- The initramfs (Alpine) brings up the USB gadget and switches to Debian on the card.
+- **Slot B is empty** — `vendor_boot_b` serves only as storage for the boot image.
 
-## Build a nasazení
+## Build and deploy
 
-Podrobný postup od čistého PC až po běžící telefon je v **[BUILD.md](BUILD.md)**.
-Ve zkratce (z kořene projektu, tj. adresáře nad `scripts/`):
+The detailed procedure, from a clean PC to a running phone, is in
+**[BUILD.md](BUILD.md)**. In short (from the project root, i.e. the directory
+above `scripts/`):
 
 ```sh
-# kompletní build (kernel + U-Boot + initramfs + boot image + rootfs)
-WIFI_SSID=mojesit WIFI_PSK=heslo scripts/build.sh
+# full build (kernel + U-Boot + initramfs + boot image + rootfs)
+WIFI_SSID=mynetwork WIFI_PSK=password scripts/build.sh
 
-# první flash přes fastboot (U-Boot do boot_a, Linux do vendor_boot_b)
-#   viz BUILD.md
+# first flash over fastboot (U-Boot to boot_a, Linux to vendor_boot_b)
+#   see BUILD.md
 
-# update běžícího systému (rebuild kernelu + modulů + boot image, reflash)
+# update a running system (rebuild kernel + modules + boot image, reflash)
 scripts/update-debian.sh
 ```
 
-Pro změnu jen v modulech (bez změny DTB) stačí přebalit moduly na telefon a
-rebootovat — bez UART reflashe. Změna DTB vyžaduje `update-debian.sh`.
+For a module-only change (without changing the DTB) it is enough to repack the
+modules onto the phone and reboot — no UART reflash. A DTB change requires
+`update-debian.sh`.
 
-## Důležitá pravidla
+## Important rules
 
-- Kernel stavět **jen s `LLVM=1`** (GCC přepíše `.config` bez CFI/LTO → moduly padají).
-- **Nikdy `fastboot set_active b`** (slot B je prázdný) a **neflashovat LK**.
-- Přes `/dev/mem` nečíst paměť modemu, EMI MPU ani SMPU — telefon zamrzne.
-- Do gitu nepatří tajné hodnoty: WiFi PSK, PIN/PUK SIM, `out/modem-nvram`
-  (IMEI) ani `backup/`.
+- Build the kernel **only with `LLVM=1`** (GCC rewrites `.config` without CFI/LTO
+  → modules crash).
+- **Never `fastboot set_active b`** (slot B is empty) and **do not flash LK**.
+- Do not read modem, EMI MPU or SMPU memory over `/dev/mem` — the phone freezes.
+- Secrets do not belong in git: WiFi PSK, SIM PIN/PUK, `out/modem-nvram`
+  (IMEI) or `backup/`.
 
-Víc v [BUILD.md](BUILD.md).
+More in [BUILD.md](BUILD.md).
