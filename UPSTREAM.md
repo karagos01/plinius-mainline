@@ -450,3 +450,29 @@ Specific nits are produced by `./scripts/checkpatch.pl --strict -g <commit>`.
   likely lucky/under different conditions). **Next:** debug why the power-gate
   does not clear the latch from an active sink session (compare registers
   working-at-boot vs failing-hot-plug; re-examine the stock sink→host path).
+- 2026-11-01: **runtime sink→host hot-plug now GENUINELY FIXED — in the U2 PHY,
+  not mtu3.** RE of the stock `phy-mtk-xsphy.ko` `mtk_phy_power_on` showed the
+  vendor does a full U2 bring-up on every power-on that mainline's
+  `u2_phy_instance_power_on()` omits entirely: a FORCE_SUSPENDM suspend/resume
+  pulse on U2PHYDTM0 (resets the PHY digital incl. the connect detector) followed
+  by forcing DTM0 back to its operational config (mask `0xff41c30b`, clearing
+  every stale FORCE_* line override) plus ACR0/ACR6 writes. Mainline only set
+  VBUSCMP+VBUSVALID, which is enough for a device present when the host is first
+  brought up at boot, but on a runtime device→host switch the SSUSB IP is
+  re-initialised with the PHY still holding the digital + line-override state
+  from the preceding device/sink session. Two observable stages while fixing it:
+  (a) with only the FORCE_SUSPENDM reset, connect detection recovered
+  (PORTSC CCS 0→1) but the still-force-driven data lines gave `descriptor read
+  -71` + full-speed fallback; (b) adding the DTM0 operational-config clear + ACR
+  writes made a high-speed drive enumerate. Fix = port the full vendor U2
+  power-on into `u2_phy_instance_power_on()` and re-apply the DT HS eye tuning
+  (`u2_phy_props_set`) in `mtk_phy_power_on()` after the pulse (init() runs once,
+  power_on() on every role switch). Commit `b790ddb`
+  (`phy: mediatek: phy-mtk-xsphy: full U2 PHY power-on for role switch`), pushed
+  to fork/plinius. **Device-verified on a clean boot#2: sink(PC)→drive hot-plug
+  enumerates /dev/sdd at high speed (480), mounts (vfat "arch boot"), repeatably
+  (plug + replug both work).** This is complementary to the mtu3 power-gate
+  (`a1e89ca3`): switch_port_to_host() does phy_power_off/on, which now runs the
+  full vendor bring-up. checkpatch: 0 errors, 2 CHECKs (udelay→usleep_range —
+  deliberate, matches the verified code; convert in the pre-submission pass).
+  The 2026-11-01 "hot-plug marginal" finding above is now RESOLVED.
