@@ -389,3 +389,29 @@ Specific nits are produced by `./scripts/checkpatch.pl --strict -g <commit>`.
   boot right after a `fastboot flash` is flaky for USB host (pre-existing
   first-boot-after-flash issue) — always re-test hot-plug on a second, plain
   `reboot -f` boot.
+- 2026-10-31 (cont.): **USB/Type-C series upstream-readiness — bindings +
+  validation closed.** Worked the TODO from the previous entry. Five commits
+  pushed to fork/plinius (`c15c9116..a1452b79`), author Jan Benedikt:
+  `70df2a3` dt-bindings: usb: mtu3: document `mediatek,hwrscs-vers` (TODO item 1);
+  `228b796` dt-bindings: phy: mediatek,xsphy: add `mediatek,mt6878-xsphy`;
+  `e58d027` dt-bindings: power: supply: mt6375-charger: add the
+  `usb-otg-vbus-regulator` child; `17b8688` dt-bindings: usb: new
+  `mediatek,mt6375-tcpc.yaml` (modeled on `mediatek,mt6370-tcpc.yaml`) + wire it
+  as the `tcpc` child of `mfd/mediatek,mt6375.yaml` with an example;
+  `a1452b7` MAINTAINERS: list the tcpci_mt6375 driver + the new binding under
+  MEDIATEK MT6375 SUBPMIC DRIVERS. **Validation:** `dt_binding_check` clean on
+  all five touched bindings; full-board `dtbs_check` now has **zero USB/Type-C
+  warnings** — `usb-otg-vbus-regulator`, `tcpc`, `mediatek,mt6375-tcpc` and
+  `mediatek,mt6878-xsphy` all validate; the only plinius `dtbs_check` warnings
+  left are the intentional idle-states (bod 4) and the upstream `ti,syscon-reset`
+  gap. `checkpatch --strict` over the whole host/dual-role series = **0 errors,
+  0 checks** (warnings are only the deliberate lowercase `Co-authored-by` and one
+  benign "DT binding/include should be a separate patch" on the pmdomain
+  `#define`). This closes TODO item (1) fully and the DTS side of item (4) (the
+  FSA4480 + connector graph validate clean). **Still open (decision/dialogue, not
+  mechanical):** item (2), the shared TCPCI core helper (`tcpci.c` +
+  `tcpci.h` self-sourced-VBUS report) — needs maintainer justification before it
+  can go upstream, not a Plinius-only change; and the pre-submission global pass
+  (lowercase `Co-authored-by` → `Co-developed-by`, reorder each binding patch
+  before the driver that uses it). Bindings are `Documentation/`-only, so the
+  built kernel and DTB are byte-identical — no reflash needed to verify.
