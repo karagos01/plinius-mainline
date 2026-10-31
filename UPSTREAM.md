@@ -346,3 +346,46 @@ Specific nits are produced by `./scripts/checkpatch.pl --strict -g <commit>`.
   to fork/plinius. Backups: `plinius-pre-name` + the older `plinius-pre-sob`.
   Item 2 brought to a clean stop; the remainder is either the low-value checkpatch
   micro-nit cleanup or intentionally-kept items.
+- 2026-10-31: **USB-C OTG / host (DRD) fully works on mainline — functional
+  bring-up, not just the dtbs/binding work above.** The USB-C port is dual-role:
+  PD sink (charging) + data device (RNDIS gadget) + **host (OTG)** with runtime
+  role switching driven by the MT6375 TCPM/TCPC. Device-verified on a reflash:
+  a USB flash drive enumerates (`/dev/sdd`), vfat+iso9660 mount read-only, and
+  **runtime hot-plug works** — plugging the drive at runtime (incl. right after
+  the phone had been charging from a PC as a sink) switches to host and
+  enumerates; detach returns to gadget. The functional series (11 commits pushed
+  to fork/plinius, on top of the binding/dtbs work):
+  `a58b04c9` tcpci: core helper to report self-sourced VBUS present,
+  `20d0339f` tcpci_mt6375: report VBUS present while sourcing OTG,
+  `eeb5812a` mtu3: set PHY mode on the host/device role switch,
+  `a034d1ff` dts: source OTG VBUS from the xhci host node,
+  `dfaca16c` pmdomain mt6878: add the SSUSB power domain,
+  `def2cf8d` mtu3: bring up the MT6878 host resources on the role switch
+  (adds `ssusb_hwrscs_req()` gated by DT `mediatek,hwrscs-vers`, exports
+  `ssusb_ip_sw_reset()`, per-switch IP reset + xHCI teardown/rebuild),
+  `7009da91` + `c8acc948` dts/dtsi: wire + enable the host path,
+  `c04c16092` dts: gate OTG VBUS via GPIO 110 (`otg_vbus_en` regulator-fixed
+  fed from `mt6375_otg_vbus`),
+  `25fc5708` tcpci_mt6375: program the hardware Alert mask at init (fixes the
+  edge-latched PD_EVT that wedged TCPM on hot-plug),
+  `c15c9116` mtu3: power-gate the IP across a device->host role switch (the final
+  hot-plug fix — power-gates the SSUSB IP to its sleep state between roles and
+  enables VBUS before the root hub scan, so a switch taken after the port was a
+  sink no longer comes up PORTSC.CCS=0; mirrors the stock `switch_port_to_off`,
+  found by RE of the vendor `mtu3.ko`/`phy-mtk-xsphy.ko`; exports
+  `ssusb_host_enable()`/`ssusb_host_disable()`).
+  Also needs CONFIG_USB_STORAGE=y + USB_UAS=y (+ MODULE_ALLOW_BTF_MISMATCH=y so
+  the =m fs/storage modules load). **Upstream-readiness TODO for this series
+  (new work beyond the 33→4 dtbs audit):** (1) add the new DT property
+  `mediatek,hwrscs-vers` to `usb/mediatek,mtu3.yaml`; (2) the two tcpci commits
+  touch shared core (`drivers/usb/typec/tcpm/tcpci.c` + `include/linux/usb/tcpci.h`,
+  a new `->get_vbus`-style helper) — needs justification / maintainer dialogue,
+  not a Plinius-only change; (3) the `mtu3_dr.c` role-switch rework
+  (ip_sw_reset/hwrscs/power-gate/VBUS-ordering) is driver-internal — checkpatch +
+  a cover-letter explaining the MT6878 quirk; (4) DTS: the `otg_vbus_en`
+  regulator-fixed, the `&ssusb vbus-supply`, and the FSA4480 typec-mux +
+  usb-c-connector OF-graph (needs `fcs,fsa4480` = CONFIG_TYPEC_MUX_FSA4480, already
+  an upstream binding). **TEST-METHOD NOTE for anyone re-verifying:** the first
+  boot right after a `fastboot flash` is flaky for USB host (pre-existing
+  first-boot-after-flash issue) — always re-test hot-plug on a second, plain
+  `reboot -f` boot.
