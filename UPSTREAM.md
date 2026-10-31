@@ -415,3 +415,38 @@ Specific nits are produced by `./scripts/checkpatch.pl --strict -g <commit>`.
   (lowercase `Co-authored-by` → `Co-developed-by`, reorder each binding patch
   before the driver that uses it). Bindings are `Documentation/`-only, so the
   built kernel and DTB are byte-identical — no reflash needed to verify.
+- 2026-11-01: **TCPCI core helper ELIMINATED (TODO item 2 closed) — no shared-core
+  change needed.** Dropped the two commits that touched `tcpm/tcpci.c` +
+  `include/linux/usb/tcpci.h` (the `->get_vbus` override hook + the
+  `report VBUS present while sourcing` consumer) and reworked the MT6375 driver
+  to signal VBUS to the TCPM the same way the in-tree Maxim TCPC does: its
+  `set_vbus` hook calls `tcpm_sourcing_vbus()` on source-on and
+  `tcpm_vbus_change()` on source-off via the exported `tcpci_get_tcpm_port()`.
+  Analysis that made this safe: TCPM only re-reads `get_vbus` on a
+  `TCPM_VBUS_EVENT` (POWER_STATUS Alert), which the MT6375 never raises while
+  self-sourcing, so a one-shot `tcpm_sourcing_vbus()` drives the source attach
+  and nothing later reads VBUS absent. Single driver-only commit `f835751`
+  (`usb: typec: tcpci_mt6375: report OTG VBUS to the TCPM`), force-pushed to
+  fork/plinius (`a1452b79..f835751`, rewriting the 2 old commits); backup of the
+  pre-rework tip kept on local branch `plinius-pre-tcpci-rework`. checkpatch
+  clean (0 errors/0 checks). A first attempt NULL-derefed at boot (used
+  `priv->tcpci`, which is NULL until `tcpci_register_port()` returns, during the
+  TCPM's `tcpm_init()` `set_vbus`); fixed by using the `tcpci` arg (its `->port`
+  is NULL during registration so the guard skips). **Device A/B test (reflash
+  both, same scenario, clean boot#2):** the refactor is behaviourally
+  IDENTICAL to the pre-rework (Design A) kernel — proven not a regression.
+- 2026-11-01: **FINDING / correction — runtime sink→host hot-plug is marginal,
+  NOT the reliably-"solved" state the earlier typec notes claimed.** On this
+  device today, on a clean reboot, a USB drive attached **at boot** enumerates
+  perfectly (PORTSC `0x00000e43`, `/dev/sdd`, Kingston 126 GB) via the probe-time
+  host path — so the hardware, cable, OTG adapter, FSA4480 mux and USB2 PHY are
+  all fine. But the **runtime** sink(PC)→host switch (plug the drive after the
+  port has been a device/sink) comes up `PORTSC=0x0a0003c0` (CCS=0, VBUS 5 V
+  present, root hub up, no device) — i.e. the exact latch the `switch_port_to_host`
+  power-gate (`c15c9116`/`a1e89ca3`) was meant to clear. This failure reproduces
+  on **both** the tcpci-refactor kernel and the pre-rework (Design A) kernel, so
+  it is independent of the tcpci work; the power-gate fix is evidently marginal
+  for the active-sink→host case (the earlier "sink→drive verified" runs were
+  likely lucky/under different conditions). **Next:** debug why the power-gate
+  does not clear the latch from an active sink session (compare registers
+  working-at-boot vs failing-hot-plug; re-examine the stock sink→host path).
