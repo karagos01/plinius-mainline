@@ -476,3 +476,28 @@ Specific nits are produced by `./scripts/checkpatch.pl --strict -g <commit>`.
   full vendor bring-up. checkpatch: 0 errors, 2 CHECKs (udelay→usleep_range —
   deliberate, matches the verified code; convert in the pre-submission pass).
   The 2026-11-01 "hot-plug marginal" finding above is now RESOLVED.
+- 2026-11-01 (pre-submission pass, USB/Type-C series): reordered the series so
+  every `dt-bindings` patch precedes the driver/DTS that consumes it, and
+  converted the two `udelay` calls in the xsphy fix to `usleep_range`. The 5
+  binding + MAINTAINERS commits touch only `Documentation/` / `MAINTAINERS`
+  (disjoint from every driver/DTS commit), so they float to the front of the
+  series conflict-free — which is also the correct bisect order (the binding
+  lands before its first user). Verified the reorder is pure history: the tree
+  diff old-tip..new-tip is empty outside the xsphy file. usleep_range:
+  `udelay(30)→usleep_range(30, 60)` and `udelay(800)→usleep_range(800, 1000)` in
+  the sleepable `u2_phy_instance_power_on()` — the only content delta of the
+  whole pass. `phy-mtk-xsphy.o` compiles (LLVM=1); `checkpatch --strict` over the
+  22-commit series = **0 errors, 0 checks** (the 2 udelay CHECKs gone; remaining
+  warnings = the deliberate 22× lowercase `Co-authored-by` + 3 benign: a long
+  commit-desc line, the pmdomain `#define`-in-include, and the "does MAINTAINERS
+  need updating?" on the new tcpc binding file, which IS covered by the
+  MAINTAINERS commit). New tip `422710d8` (was `b790ddb`), force-pushed to
+  fork/plinius; backup of the old tip on local branch `plinius-pre-reorder`.
+  Device re-verify skipped by decision — usleep_range is a 1:1 swap in a
+  sleepable path (compiles), so the committed code now differs from the
+  device-verified udelay version only by that safe substitution.
+  **Attribution left as lowercase `Co-authored-by`** (NOT converted to
+  `Co-developed-by`): the kernel pairs `Co-developed-by:` with a `Signed-off-by:`
+  of the same entity, i.e. an AI DCO sign-off, which is contentious and
+  effectively meaningless — deferred by decision. This closes the mechanical part
+  of the pre-submission pass for the USB/Type-C series.
