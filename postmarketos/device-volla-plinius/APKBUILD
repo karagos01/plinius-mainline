@@ -1,0 +1,33 @@
+# Reference: <https://postmarketos.org/devicepkg>
+# DRAFT device package for the Volla Phone Plinius. Not yet in pmaports.
+# See README.md for the submission path and open gaps.
+maintainer="Jan Benedikt <karagos01@gmail.com>"
+pkgname=device-volla-plinius
+pkgdesc="Volla Phone Plinius"
+pkgver=0.1
+pkgrel=0
+url="https://postmarketos.org"
+license="MIT"
+arch="aarch64"
+options="!check !archcheck"
+depends="
+	linux-postmarketos-mediatek-mt6878
+	mkbootimg
+	postmarketos-base
+"
+makedepends="devicepkg-dev"
+source="
+	deviceinfo
+	modules-initfs
+"
+
+build() {
+	devicepkg_build $startdir $pkgname
+}
+
+package() {
+	devicepkg_package $startdir $pkgname
+}
+
+# Regenerate with: pmbootstrap checksum device-volla-plinius
+sha512sums=""

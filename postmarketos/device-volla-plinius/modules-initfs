@@ -1,0 +1,12 @@
+# Modules to pull into the pmOS initramfs (one module name per line).
+#
+# Nothing is required here: every driver needed to reach and mount the rootfs
+# and to bring up the console is built in (=y) in the mt6878 kernel config --
+#   CONFIG_MMC_MTK      microSD (mmc1) rootfs
+#   CONFIG_SCSI_UFSHCD  internal UFS
+#   CONFIG_USB_MTU3*    USB (dual-role), CONFIG_USB_CONFIGFS* gadget
+#   CONFIG_DRM_SIMPLEDRM bootloader-framebuffer console
+#   CONFIG_EXT4_FS / CONFIG_VFAT_FS filesystems
+#
+# Add a module name above this block only if one of those is switched to =m
+# in the kernel package config.
