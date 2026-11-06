@@ -149,6 +149,53 @@ EOF
 		$R/etc/systemd/system/multi-user.target.wants/wpa_supplicant@wlan0.service
 fi
 
+# WiFi stability: the mt7921/connac radio self-disconnects (reason=3
+# locally_generated) with power-save on, even at full signal, and once it
+# wedges it cannot be recovered in place (a module reload fails -110: connsys
+# MCU will not re-handshake without a full power cycle). So: (1) keep power-save
+# off whenever wlan0 appears, and (2) a watchdog that gently re-associates on a
+# drop and escalates to a wpa_supplicant restart -- never unloading the module.
+cat > $R/etc/udev/rules.d/70-wlan-powersave.rules <<'EOF'
+ACTION=="add", SUBSYSTEM=="net", KERNEL=="wlan0", RUN+="/usr/sbin/iw dev wlan0 set power_save off"
+EOF
+install -d $R/usr/local/sbin
+cat > $R/usr/local/sbin/wlan-watchdog.sh <<'EOF'
+#!/bin/sh
+IW=/usr/sbin/iw; WC=/usr/sbin/wpa_cli; IF=wlan0
+S=/run/wlan-watchdog.fail
+if $IW dev $IF link 2>/dev/null | grep -q "^Connected"; then rm -f "$S"; exit 0; fi
+n=$(cat "$S" 2>/dev/null || echo 0); n=$((n+1)); echo "$n" > "$S"
+$WC -i $IF enable_network all >/dev/null 2>&1
+$WC -i $IF reassociate >/dev/null 2>&1
+if [ "$n" -ge 4 ]; then
+	logger -t wlan-watchdog "wlan0 down ${n}x -> restart wpa_supplicant@wlan0"
+	systemctl restart wpa_supplicant@wlan0 >/dev/null 2>&1 || true
+	systemctl restart systemd-networkd >/dev/null 2>&1 || true
+	rm -f "$S"
+fi
+EOF
+chmod +x $R/usr/local/sbin/wlan-watchdog.sh
+cat > $R/etc/systemd/system/wlan-watchdog.service <<'EOF'
+[Unit]
+Description=Re-associate wlan0 if the mt7921 link drops
+After=wpa_supplicant@wlan0.service
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/wlan-watchdog.sh
+EOF
+cat > $R/etc/systemd/system/wlan-watchdog.timer <<'EOF'
+[Unit]
+Description=Periodic wlan0 link check
+[Timer]
+OnBootSec=60
+OnUnitActiveSec=30
+AccuracySec=5s
+[Install]
+WantedBy=timers.target
+EOF
+ln -sf /etc/systemd/system/wlan-watchdog.timer \
+	$R/etc/systemd/system/timers.target.wants/wlan-watchdog.timer
+
 sed -i 's/^# *\(en_US.UTF-8\|cs_CZ.UTF-8\)/\1/' $R/etc/locale.gen
 echo LANG=cs_CZ.UTF-8 > $R/etc/default/locale
 chroot $R /bin/sh -e <<'EOF'
