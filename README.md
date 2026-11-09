@@ -55,6 +55,29 @@ upstream is preserved); the default branch is set to `plinius` on both.
   power: disabling them changed nothing. WiFi power save brings no measurable
   saving and stays off.
 
+- **postmarketOS / Phosh.** A pmOS image built with `pmbootstrap` from our
+  kernel (`--src`) and a local `device-volla-plinius` package boots into Phosh
+  (greetd + phrog + phoc on the native MediaTek DRM driver). Login, touch, colours
+  (after the dither and gamma fixes), WiFi scanning in NetworkManager, Bluetooth,
+  battery in upower, the sound card, the accelerometer and the ambient light
+  sensor all work. Open items:
+  - **Keep the pmOS port in this repo.** The device package (audio udev init,
+    cmdline) and the kernel package config only live in a local pmaports
+    checkout; commit them here so the image can be rebuilt.
+  - **Proximity sensor.** The SCP `stk_ps` proximity sensor never reports a
+    change, even when covered, so iio-sensor-proxy cannot use it (it would
+    also need `PROXIMITY_NEAR_LEVEL` from udev/hwdb). The stock sensor HAL most
+    likely sends it calibration or thresholds first. Needed for blanking the
+    display during calls.
+  - **Modem in ModemManager.** ModemManager finds no modem: our CCCI modem is
+    driven by our own tools (`mobile-data.py`, `sms.py`), so calls, SMS and
+    mobile data are not available in Phosh yet.
+  - **Verify WiFi and audio in the session.** Connect to WiFi through
+    NetworkManager and play sound through PipeWire inside a logged-in Phosh
+    session.
+  - **Compass.** iio-sensor-proxy does not pick up the magnetometer (it expects
+    a tilt-compensated heading channel); low priority.
+
 ## How the phone boots
 
 ```
