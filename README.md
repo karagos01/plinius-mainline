@@ -35,6 +35,26 @@ upstream is preserved); the default branch is set to `plinius` on both.
 | SMS | ✅ | receive and send (`sms.py`) |
 | Bluetooth BR/EDR + LE | ✅ | custom `btmtk_connsys` driver (BGF subsystem, BEIF EMI-ring, WMT); scan, pairing, A2DP audio, IRQ-driven RX |
 
+## Roadmap
+
+- **Low-power suspend (SPM/LPM).** Suspend to idle runs, but the firmware (TF-A)
+  rejects the system-level low-power state: the `s2idle` cpuidle state on CPU0
+  is always rejected, PSCI offers no `SYSTEM_SUSPEND` (only `s2idle` in
+  `mem_sleep`) and the `mcusysoff`/`system-vcore` idle states are mostly
+  rejected too. As a result a suspended phone draws about as much as an idle
+  one with the display off. Measured on battery (2026-11-09):
+
+  | State | Battery current |
+  |---|---|
+  | display on | ~356 mA |
+  | display off, awake | ~143 mA |
+  | `s2idle` (5 min, unplugged) | ~142 mA |
+
+  Likely needs the MediaTek SPM firmware and low-power manager bring-up that the
+  stock kernel uses (`mtk-lpm`). Rejected idle states themselves do not cost
+  power: disabling them changed nothing. WiFi power save brings no measurable
+  saving and stays off.
+
 ## How the phone boots
 
 ```
