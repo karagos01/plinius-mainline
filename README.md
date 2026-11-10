@@ -34,6 +34,7 @@ upstream is preserved); the default branch is set to `plinius` on both.
 | Mobile data | ✅ | LTE, NetAgent EIF (`mobile-data.py`) |
 | SMS | ✅ | receive and send (`sms.py`) |
 | Bluetooth BR/EDR + LE | ✅ | custom `btmtk_connsys` driver (BGF subsystem, BEIF EMI-ring, WMT); scan, pairing, A2DP audio, IRQ-driven RX |
+| GPU (Mali-G615 MC2) | ✅ | panthor on the GPUEB power controller (`mtk-mfg-pmdomain`); OpenGL ES 3.1 with Mesa ≥ 26.3 (packaged in `postmarketos/mesa`), devfreq 265 MHz–1.047 GHz, thermal throttling at 85 °C; Phosh composites on the GPU |
 
 ## Roadmap
 
