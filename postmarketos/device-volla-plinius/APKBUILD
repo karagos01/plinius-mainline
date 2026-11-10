@@ -1,17 +1,18 @@
 # Reference: <https://postmarketos.org/devicepkg>
 # DRAFT device package for the Volla Phone Plinius. Not yet in pmaports.
-# See README.md for the submission path and open gaps.
+# See postmarketos/README.md in karagos01/plinius-mainline.
 maintainer="Jan Benedikt <karagos01@gmail.com>"
 pkgname=device-volla-plinius
 pkgdesc="Volla Phone Plinius"
 pkgver=0.1
-pkgrel=0
+pkgrel=3
 url="https://postmarketos.org"
 license="MIT"
 arch="aarch64"
 options="!check !archcheck"
 depends="
 	linux-postmarketos-mediatek-mt6878
+	alsa-utils
 	mkbootimg
 	postmarketos-base
 "
@@ -19,6 +20,9 @@ makedepends="devicepkg-dev"
 source="
 	deviceinfo
 	modules-initfs
+	mt6878-wifi-nvram.bin
+	volla-plinius-audio-init
+	90-volla-plinius-audio.rules
 "
 
 build() {
@@ -27,7 +31,25 @@ build() {
 
 package() {
 	devicepkg_package $startdir $pkgname
+
+	# MediaTek connac/mt7921 WiFi calibration NVRAM (the connsys firmware
+	# itself is loaded from LK into EMI); without it mt7921_soc probe fails
+	# "Direct firmware load for mediatek/mt6878-wifi-nvram.bin failed -2".
+	install -Dm644 "$srcdir"/mt6878-wifi-nvram.bin \
+		"$pkgdir"/lib/firmware/mediatek/mt6878-wifi-nvram.bin
+
+	# No UCM profile yet: switch the card to the loudspeaker at boot.
+	install -Dm755 "$srcdir"/volla-plinius-audio-init \
+		"$pkgdir"/usr/libexec/volla-plinius-audio-init
+	install -Dm644 "$srcdir"/90-volla-plinius-audio.rules \
+		"$pkgdir"/usr/lib/udev/rules.d/90-volla-plinius-audio.rules
 }
 
 # Regenerate with: pmbootstrap checksum device-volla-plinius
-sha512sums=""
+sha512sums="
+1fe9ff917cb59e3216a531108c9013f8b8541441ff2acd5413adace24f3b4731db785d15b4dbb93735d2bd167e7eb4d95da351d253a17f4eb9b08717cbcf23a9  deviceinfo
+7f58790879f84192ac06efe29fd4b84318920d894324f17a804d29e8713a258ba236374e12050afb12a9f913853d7cfd185bb9855fe08969aa8ef3a2ae084aa7  modules-initfs
+5a40b8e89523ca8bb035f12fd52ec79600ad32af2f5b5318c75dfbdfc376868656c9f46a344e1c7fede8ac787359eaa03d22bf737bd69cd5bd47dde919f041f5  mt6878-wifi-nvram.bin
+5ade1dbaa75a353697ba9c9d1d034f468a155cc778b88348ea5cbea7242554717a5a1e80f189afbac1619d1c6a55fed641bded1c0b23e9ce82329527d8752365  volla-plinius-audio-init
+3579b6356c2812ea6e7c402bf7bf1a6d0a3878492d4f18cf2ae557ffc5cd2face919b3fc9f6ff1d8145d98eef8394b2a55e13c3306f862d05038eee9855814be  90-volla-plinius-audio.rules
+"

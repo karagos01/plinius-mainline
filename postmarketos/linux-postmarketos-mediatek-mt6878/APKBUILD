@@ -1,0 +1,89 @@
+# Volla Phone Plinius kernel, packaged for postmarketOS.
+#
+# Based on pmaports device/testing/linux-postmarketos-mediatek-mt6878
+# (maintainer BotchedRPR), but built from the karagos01/linux "plinius"
+# branch (MT6878-Mainline + the Plinius bring-up) with our full kernel
+# config. The config file next to this APKBUILD is a copy of
+# configs/linux.config; postmarketos/install-pmaports.sh refreshes it.
+#
+# pkgver uses a _git suffix so it sorts above the official 7.2-r0 package,
+# which lacks the Plinius drivers.
+maintainer="Jan Benedikt <karagos01@gmail.com>"
+pkgname=linux-postmarketos-mediatek-mt6878
+pkgver=7.2_git20261111
+pkgrel=0
+pkgdesc="Mainline kernel for MT6878 devices (Volla Phone Plinius bring-up)"
+arch="aarch64"
+_carch="arm64"
+_flavor="postmarketos-mediatek-mt6878"
+url="https://github.com/karagos01/linux"
+license="GPL-2.0-only"
+options="!strip !check !tracedeps pmb:cross-native pmb:kconfigcheck-community"
+makedepends="
+	bash
+	bc
+	bison
+	clang
+	devicepkg-dev
+	flex
+	linux-headers
+	lld
+	llvm
+	openssl-dev
+	perl
+	python3
+	zstd
+"
+
+_repository="linux"
+_commit="13585d41c5c06e82f6eb07a0c22dabff4a91bd42"
+_config="config-$_flavor.$arch"
+source="
+	$pkgname-$_commit.tar.gz::https://github.com/karagos01/$_repository/archive/$_commit.tar.gz
+	$_config
+"
+builddir="$srcdir/$_repository-$_commit"
+
+prepare() {
+	default_prepare
+	cp "$srcdir/$_config" .config
+	# Reconcile the config against this exact tree (non-interactive), then
+	# force module signing / kernel lockdown off: pmOS does not sign modules,
+	# and scripts/sign-file fails to build host-side in the musl chroot
+	# (asm-generic/int-ll64.h). LOCKDOWN selects MODULE_SIG, so drop it too.
+	make ARCH="$_carch" LLVM=1 olddefconfig
+	./scripts/config -d MODULE_SIG -d MODULE_SIG_ALL -d MODULE_SIG_FORCE \
+		-d SECURITY_LOCKDOWN_LSM -d SECURITY_LOCKDOWN_LSM_EARLY
+	make ARCH="$_carch" LLVM=1 olddefconfig
+}
+
+build() {
+	unset LDFLAGS
+	make ARCH="$_carch" LLVM=1 \
+		KBUILD_BUILD_VERSION="$((pkgrel + 1 ))-$_flavor"
+}
+
+package() {
+	mkdir -p "$pkgdir"/boot
+
+	install -Dm644 "$builddir/arch/$_carch/boot/Image.gz" \
+				   "$pkgdir/boot/vmlinuz"
+
+	make modules_install dtbs_install \
+		ARCH="$_carch" \
+		INSTALL_PATH="$pkgdir"/boot/ \
+		INSTALL_MOD_PATH="$pkgdir" \
+		INSTALL_MOD_STRIP=1 \
+		INSTALL_DTBS_PATH="$pkgdir"/boot/dtbs \
+		LLVM=1
+	rm -f "$pkgdir"/lib/modules/*/build "$pkgdir"/lib/modules/*/source
+
+	install -D "$builddir"/include/config/kernel.release \
+		"$pkgdir"/usr/share/kernel/$_flavor/kernel.release
+}
+
+# Regenerate with: pmbootstrap checksum linux-postmarketos-mediatek-mt6878
+sha512sums="
+b73ee889f6b1aabc4089e974c2e835946390067a02b4e20182934f4bb11541cf2c56102ed0ebec984b4f665587a6165de705632385a06e3ace65743dc60b5c60  linux-postmarketos-mediatek-mt6878-13585d41c5c06e82f6eb07a0c22dabff4a91bd42.tar.gz
+e1c40af8cfc27b103d371fb4dfa8ec8fe35f1b7eeaad9ccd972ab5fc49e551aed61b9036bfb0cd02e4d2def148c5c0270916804cbbb2415a23e4fe978ba8d791  config-postmarketos-mediatek-mt6878.aarch64
+"
