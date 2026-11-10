@@ -78,6 +78,14 @@ upstream is preserved); the default branch is set to `plinius` on both.
   - **Compass.** iio-sensor-proxy does not pick up the magnetometer (it expects
     a tilt-compensated heading channel); low priority.
 
+- **New userspace tools in Rust.** Kernel drivers stay in C: they mostly extend
+  existing C drivers (mtk-drm, mt76, ASoC, TCPM), and the subsystems we need
+  (regmap, IIO, power_supply, ASoC, mfd) have no Rust bindings yet. New
+  userspace tools are written in Rust instead of Python: the modem service
+  (mobile data, SMS, and later a bridge to ModemManager), the GNSS host and
+  similar daemons. Existing Python scripts are ported when they are reworked
+  anyway, not as a separate rewrite.
+
 ## How the phone boots
 
 ```
