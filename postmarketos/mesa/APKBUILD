@@ -1,0 +1,220 @@
+# Forked from Alpine aports main/mesa (26.2.6-r0) for the Volla Phone Plinius.
+#
+# Mesa 26.3.0 is the first release that knows the Mali-G615 (Valhall v11,
+# MT6878) in panfrost/panvk; Alpine edge still ships 26.2.6. Drop this fork
+# once Alpine moves to >= 26.3.
+#
+# Changes against Alpine:
+# - pkgver 26.3.0; llvm23.patch dropped (fix is upstream in 26.3).
+# - aarch64 only, with a reduced driver set to keep the build short:
+#   gallium panfrost/llvmpipe/softpipe/zink/virgl, vulkan panfrost/swrast.
+# - no rusticl (no rust), no VA-API.
+# The subpackage split and file layout match Alpine, so it is a drop-in
+# replacement for mesa, mesa-gl/egl/gles/gbm, mesa-dri-gallium,
+# mesa-vulkan-panfrost and mesa-vulkan-swrast.
+maintainer="Jan Benedikt <karagos01@gmail.com>"
+pkgname=mesa
+pkgver=26.3.0
+pkgrel=0
+pkgdesc="Mesa DRI OpenGL library"
+url="https://www.mesa3d.org"
+arch="aarch64"
+license="MIT AND SGI-B-2.0 AND BSL-1.0"
+subpackages="
+	$pkgname-dev
+	$pkgname-dri-gallium:_gallium
+	$pkgname-egl
+	$pkgname-gl
+	$pkgname-gles
+	$pkgname-gbm
+	$pkgname-vulkan-panfrost:_vulkan
+	$pkgname-vulkan-swrast:_vulkan
+	$pkgname-vulkan-layers:_vulkan_layers
+	"
+_llvmver=23
+depends_dev="
+	libdrm-dev
+	libxdamage-dev
+	libxshmfence-dev
+	"
+makedepends="
+	$depends_dev
+	binutils
+	bison
+	cbindgen
+	clang$_llvmver-dev
+	elfutils-dev
+	eudev-dev
+	expat-dev
+	findutils
+	flex
+	gettext
+	glslang-dev
+	libclc-dev~$_llvmver
+	libdisplay-info-dev
+	libtool
+	libx11-dev
+	libxfixes-dev
+	libxml2-dev
+	libxrandr-dev
+	libxxf86vm-dev
+	llvm$_llvmver-dev
+	meson
+	py3-cparser
+	py3-mako
+	py3-packaging
+	py3-ply
+	py3-yaml
+	python3
+	spirv-llvm-translator-dev
+	vulkan-loader-dev
+	wayland-dev
+	wayland-protocols
+	xorgproto
+	zlib-dev
+	zstd-dev
+	"
+source="https://archive.mesa3d.org/mesa-${pkgver/_/-}.tar.xz
+	23575.patch
+	riscv64-tls.patch
+	"
+builddir="$srcdir/mesa-${pkgver/_/-}"
+options="!check"
+
+_dri_driverdir=/usr/lib/dri
+_gallium_drivers="panfrost,llvmpipe,softpipe,zink,virgl"
+_vulkan_drivers="panfrost,swrast"
+_vulkan_layers="device-select,overlay"
+
+build() {
+	# use -g1 to generate less debug info
+	export CFLAGS="$CFLAGS -O2 -g1"
+	export CXXFLAGS="$CXXFLAGS -O2 -g1"
+	export CPPFLAGS="$CPPFLAGS -O2 -g1"
+
+	PATH="$PATH:/usr/lib/llvm$_llvmver/bin" \
+	abuild-meson \
+		-Db_ndebug=true \
+		-Db_lto=false \
+		-Dallow-kcmp=enabled \
+		-Dexpat=enabled \
+		-Dshader-cache=enabled \
+		-Dxlib-lease=enabled \
+		-Dxmlconfig=enabled \
+		-Dzstd=enabled \
+		-Dbackend_max_links=2 \
+		-Dbuild-tests=false \
+		-Ddri-drivers-path=$_dri_driverdir \
+		-Dgallium-drivers=$_gallium_drivers \
+		-Dvulkan-drivers=$_vulkan_drivers \
+		-Dvulkan-layers=$_vulkan_layers \
+		-Dplatforms=x11,wayland \
+		-Dllvm=enabled \
+		-Dshared-llvm=enabled \
+		-Dmesa-clc=enabled \
+		-Dgbm=enabled \
+		-Dglx=dri \
+		-Dopengl=true \
+		-Dgles1=enabled \
+		-Dgles2=enabled \
+		-Degl=enabled \
+		-Dgallium-extra-hud=true \
+		-Dgallium-rusticl=false \
+		-Dgallium-va=disabled \
+		. output
+
+	# Print config
+	meson configure --no-pager output
+
+	meson compile -C output
+}
+
+package() {
+	DESTDIR="$pkgdir" meson install --no-rebuild -C output
+}
+
+egl() {
+	pkgdesc="Mesa libEGL runtime libraries"
+	# gles is not directly needed but GTK+mesa throws errors when egl
+	# is installed without gles
+	depends="mesa=$pkgver-r$pkgrel mesa-gles=$pkgver-r$pkgrel"
+
+	amove usr/lib/libEGL.so*
+}
+
+gl() {
+	pkgdesc="Mesa libGL runtime libraries"
+	depends="mesa=$pkgver-r$pkgrel"
+
+	amove usr/lib/libGL.so*
+}
+
+gles() {
+	pkgdesc="Mesa libGLESv2 runtime libraries"
+	depends="mesa=$pkgver-r$pkgrel"
+
+	amove usr/lib/libGLES*.so*
+}
+
+gbm() {
+	pkgdesc="Mesa gbm library"
+	depends="mesa=$pkgver-r$pkgrel"
+
+	amove usr/lib/libgbm.so.*
+}
+
+# Move links referencing the same file to the subpackage.
+# Usage: _mv_links <base directory> <example>
+_mv_links() {
+	install -d "$subpkgdir"/$1
+	find -L "$pkgdir"/$1 -samefile "$pkgdir"/$1/$2 -print0 \
+		| xargs -0 -I{} mv {} "$subpkgdir"/$1/
+}
+
+_mv_vulkan() {
+	local i
+	for i in "$@"; do
+		amove usr/lib/libvulkan_$i*.so
+		amove usr/share/vulkan/icd.d/${i}_*.*
+	done
+}
+
+_gallium() {
+	pkgdesc="Mesa gallium DRI drivers"
+	depends="mesa=$pkgver-r$pkgrel"
+
+	# libgallium_dri.so
+	_mv_links $_dri_driverdir swrast_dri.so
+}
+
+_vulkan() {
+	local n=${subpkgname##*-vulkan-}
+	pkgdesc="Mesa Vulkan API driver for $n"
+	depends="mesa=$pkgver-r$pkgrel"
+
+	case $n in
+	panfrost)
+		_mv_vulkan panfrost ;;
+	swrast)
+		_mv_vulkan lvp ;;
+	esac
+}
+
+_vulkan_layers() {
+	pkgdesc="collection of vulkan layers from mesa"
+	depends="python3"
+
+	provides="$pkgname-vulkan-layer=$pkgver-r$pkgrel"
+	replaces="$pkgname-vulkan-layer=$pkgver-r$pkgrel"
+
+	amove usr/share/vulkan/explicit_layer.d
+	amove usr/share/vulkan/implicit_layer.d
+	amove usr/lib/libVkLayer_*.so
+	amove usr/bin/mesa-overlay-control.py
+}
+
+sha512sums="
+b4abd266ecaf813ef078a0461bcdf7c03d2ecddeb5b6e1c51054fb0afe0d830c0f27fc78f0effe68df5ea7b48f76f4e6ca36ed9afe98513f0e4bf8e0bbbe96dd  mesa-26.3.0.tar.xz
+91bdda3a4b5906963c8c0053ebb924b952dac3d50e66afee87a7abebf82141426b34dce7e1947fe18c54dedd33537792ec13a94504ff7ad890243507d57fdc88  23575.patch
+ce1887fb7d425b94c375a0547bee40c308809c01f5ce1bcddabcc69a7fcb445efb9d5f5c7bac49b2778ab40687c7bce204d278b0bf028d124c75e59083107fba  riscv64-tls.patch
+"
