@@ -43,4 +43,6 @@ package() {
 
 # Regenerate with: pmbootstrap checksum plinius-modemd (once _commit is pushed)
 sha512sums="
+c658fa9740051c654cdb424bcb36843ffa19f8fd27a329bf8e2fb39bda0f783f0d45055ea7c308afabe688676d89734a6fe6e27f4a0d67093acd63a80b639501  plinius-mainline-66721a4f095edeb1a11e09c8ad7df333666ca1f7.tar.gz
+5ab84d457dc3b8e58e85209c53dd0bcf1b90c0590c9f3be0de9ea0274a9adc884aaf421fd17cc32e27c02876463b924c7804cc3dc70795b417e0f7370f02f5da  plinius-modemd.initd
 "
