@@ -6,6 +6,8 @@
 #   bootimg   out/boot-debian.img (root=LABEL=plinius) and the RAM-only
 #             rescue image out/boot-linux.img
 #   nvram     modem/WiFi NVRAM tree from the stock backup (out/modem-nvram)
+#   modemd    modem userspace server (scripts/modemd, Rust, cross-built
+#             for aarch64 glibc: rustup target aarch64-unknown-linux-gnu)
 #   rootfs    Debian rootfs (out/debian-rootfs, needs sudo)
 #   usage: scripts/build.sh [step...]   (default: all steps in this order)
 #   env: WIFI_SSID / WIFI_PSK for the rootfs, JOBS (default nproc)
@@ -90,12 +92,16 @@ step_nvram() {
 	fi
 }
 
+step_modemd() {
+	(cd scripts/modemd && cargo build --release --target aarch64-unknown-linux-gnu)
+}
+
 step_rootfs() {
 	sudo --preserve-env=WIFI_SSID,WIFI_PSK scripts/mk-debian-rootfs.sh
 }
 
 mkdir -p out
-for s in ${@:-kernel uboot initramfs bootimg nvram rootfs}; do
+for s in ${@:-kernel uboot initramfs bootimg nvram modemd rootfs}; do
 	declare -F step_$s >/dev/null || { echo "unknown step: $s" >&2; exit 1; }
 	echo "=== $s"
 	step_$s

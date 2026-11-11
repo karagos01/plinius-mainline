@@ -1,0 +1,15 @@
+[package]
+name = "plinius-modemd"
+version = "0.1.0"
+edition = "2021"
+description = "Userspace side of the MT6878 modem: CCCI RPC and file system servers"
+license = "GPL-2.0-only"
+
+[dependencies]
+libc = "0.2"
+
+[profile.release]
+opt-level = "s"
+lto = true
+panic = "abort"
+strip = true

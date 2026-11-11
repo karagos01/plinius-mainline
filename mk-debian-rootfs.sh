@@ -48,10 +48,13 @@ if [ -d $NV ] && [ ! -d $R/var/lib/modem ]; then
 	cp -a $NV/. $R/var/lib/modem/
 fi
 
-# Modem userspace and mobile data (the PIN goes to /etc/default/plinius-modem)
+# Modem userspace (scripts/build.sh modemd) and mobile data (the PIN goes
+# to /etc/default/plinius-modem)
+install -m 755 scripts/modemd/target/aarch64-unknown-linux-gnu/release/plinius-modemd \
+	$R/usr/local/bin/
 install -d $R/usr/local/lib/plinius-modem
-install -m 755 scripts/ccci-server.py scripts/ccci_fs.py scripts/mobile-data.py \
-	scripts/sms.py $R/usr/local/lib/plinius-modem/
+rm -f $R/usr/local/lib/plinius-modem/ccci-server.py $R/usr/local/lib/plinius-modem/ccci_fs.py
+install -m 755 scripts/mobile-data.py scripts/sms.py $R/usr/local/lib/plinius-modem/
 ln -sf /usr/local/lib/plinius-modem/sms.py $R/usr/local/bin/sms
 install -m 644 scripts/systemd/plinius-*.service $R/etc/systemd/system/
 [ -f $R/etc/default/plinius-modem ] ||

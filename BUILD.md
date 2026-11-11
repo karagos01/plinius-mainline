@@ -171,8 +171,11 @@ Returning to stock: `fastboot flash boot_a backup/partitions/boot_a.img`
 - Kernel: `drivers/soc/mediatek/mtk-ccci.c` (module `mtk_ccci`) boots the modem
   (firmware loaded by LK) and exposes channels as `/dev/ccci_*` and data as the
   network interfaces `ccmni0..7` (DPMAIF).
-- `ccci-server.py`: the RPC and FS server (NVRAM from `/var/lib/modem`), DRDI.
-  With `--radio` it turns on the SIM over MIPC after the modem starts.
+- `plinius-modemd` (`scripts/modemd`, Rust): the RPC and FS server (NVRAM
+  from `/var/lib/modem`), DRDI. With `--radio` it turns on the SIM over MIPC
+  after the modem starts. `ccci-server.py` + `ccci_fs.py` are the original
+  Python implementation, kept as the reference: `ccci_fs.py` documents the
+  FS protocol, and the Rust FS server answers it byte for byte.
 - `mobile-data.py`: PIN, radio, registration, PDP context and interface
   confirmation (`AT+EIF ... "ifst","up"`), `ccmniN` configuration and the
   operator DNS for systemd-resolved.
