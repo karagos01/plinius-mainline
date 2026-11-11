@@ -1,0 +1,3 @@
+#!/bin/sh
+rc-update -q add plinius-modemd default
+exit 0

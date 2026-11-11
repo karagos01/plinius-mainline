@@ -1,0 +1,46 @@
+# DRAFT package for the Volla Phone Plinius. Not yet in pmaports.
+# See postmarketos/README.md in karagos01/plinius-mainline.
+maintainer="Jan Benedikt <karagos01@gmail.com>"
+pkgname=plinius-modemd
+pkgver=0.1.0
+pkgrel=0
+pkgdesc="Volla Phone Plinius (MT6878) modem userspace: CCCI RPC and NVRAM file system servers"
+url="https://github.com/karagos01/plinius-mainline"
+arch="aarch64"
+license="GPL-2.0-only"
+makedepends="cargo"
+install="$pkgname.post-install"
+_commit="66721a4f095edeb1a11e09c8ad7df333666ca1f7"
+source="
+	plinius-mainline-$_commit.tar.gz::https://github.com/karagos01/plinius-mainline/archive/$_commit.tar.gz
+	plinius-modemd.initd
+"
+builddir="$srcdir/modemd"
+options="net" # cargo fetch
+
+unpack() {
+	default_unpack
+	mv "$srcdir/plinius-mainline-$_commit/modemd" "$builddir"
+}
+
+prepare() {
+	default_prepare
+	cargo fetch --target="$CTARGET" --locked
+}
+
+build() {
+	cargo build --frozen --release
+}
+
+check() {
+	cargo test --frozen
+}
+
+package() {
+	install -Dm755 target/release/plinius-modemd "$pkgdir"/usr/bin/plinius-modemd
+	install -Dm755 "$srcdir"/plinius-modemd.initd "$pkgdir"/etc/init.d/plinius-modemd
+}
+
+# Regenerate with: pmbootstrap checksum plinius-modemd (once _commit is pushed)
+sha512sums="
+"

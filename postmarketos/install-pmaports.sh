@@ -7,6 +7,7 @@
 # Packages land where pmaports keeps them:
 #   device/testing/device-volla-plinius
 #   device/testing/linux-postmarketos-mediatek-mt6878  (+ configs/linux.config)
+#   device/testing/plinius-modemd                     (modem userspace, ../modemd)
 #   temp/mesa                                          (until Alpine has >= 26.3)
 # Then build and install as usual, e.g.:
 #   pmbootstrap checksum linux-postmarketos-mediatek-mt6878
@@ -18,7 +19,8 @@ PMAPORTS=${1:-$(pmbootstrap config aports)}
 [ -d "$PMAPORTS/device" ] || { echo "not a pmaports checkout: $PMAPORTS" >&2; exit 1; }
 
 K=linux-postmarketos-mediatek-mt6878
-for p in device/testing/device-volla-plinius device/testing/$K temp/mesa; do
+for p in device/testing/device-volla-plinius device/testing/$K \
+	device/testing/plinius-modemd temp/mesa; do
 	rm -rf "${PMAPORTS:?}/$p"
 	mkdir -p "$PMAPORTS/$p"
 	cp -r "$HERE/$(basename "$p")/." "$PMAPORTS/$p/"

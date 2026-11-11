@@ -8,11 +8,13 @@ this directory keeps them in git so the image can be rebuilt.
 |---|---|---|
 | `device-volla-plinius` | `device/testing/` | `deviceinfo`, WiFi NVRAM, audio init (udev), sensor udev rule |
 | `linux-postmarketos-mediatek-mt6878` | `device/testing/` | our kernel, built from `karagos01/linux` at a pinned commit with `configs/linux.config` |
+| `plinius-modemd` | `device/testing/` | modem userspace (`../modemd`, Rust) + OpenRC service, ordered before ModemManager |
 | `mesa` | `temp/` | Mesa 26.3.0 with Mali-G615 support; drop once Alpine has ≥ 26.3 |
 
 With these, Phosh runs on our native MediaTek DRM driver and composites on
 the GPU; touch, WiFi, Bluetooth, battery, sound, the accelerometer, the
-light sensor and the proximity sensor work. The SAR sensor also exposes
+light sensor, the proximity sensor and the modem (ModemManager: SIM PIN,
+LTE registration) work. The SAR sensor also exposes
 `in_proximity<N>_raw`, so a udev rule keeps iio-sensor-proxy off it. Open
 items are in the top-level README roadmap.
 
@@ -43,12 +45,27 @@ The boot chain is LK → U-Boot (`boot_a`) → boot.img. U-Boot offers
 `fastboot boot`, so a pmOS boot.img can be tried without writing anything;
 a plain reboot returns to whatever is in `vendor_boot_b`.
 
+## Modem
+
+`plinius-modemd` answers the modem's RPC and NVRAM file system requests and
+starts it; its OpenRC service waits until the modem is up (`--ready-file`)
+so that ModemManager, started after it, finds the modem on the WWAN AT port
+`/dev/wwan0at0` (generic plugin, `ccmni*` as its net ports). The modem NVRAM
+holds the IMEI and calibration and is device data, not packaged: copy
+`/var/lib/modem` (from `scripts/build.sh nvram`, or from the Debian rootfs)
+into the pmOS root, owned by root, mode 0700. Mobile data still needs the
+NetAgent (`AT+EIF`) handling of `mobile-data.py` in ModemManager.
+
+The package builds from a `karagos01/plinius-mainline` tarball at
+`_commit`; `pmbootstrap build --src scripts/modemd plinius-modemd` builds
+the working tree instead (run `cargo clean` there first).
+
 ## Build and run
 
 ```sh
 postmarketos/install-pmaports.sh          # copy the packages into pmaports
-pmbootstrap checksum linux-postmarketos-mediatek-mt6878 device-volla-plinius
-pmbootstrap build mesa linux-postmarketos-mediatek-mt6878 device-volla-plinius
+pmbootstrap checksum linux-postmarketos-mediatek-mt6878 device-volla-plinius plinius-modemd
+pmbootstrap build mesa linux-postmarketos-mediatek-mt6878 plinius-modemd device-volla-plinius
 pmbootstrap install --split               # UI e.g. phosh
 pmbootstrap export
 ```
@@ -62,5 +79,7 @@ running Linux, label `pmOS_root`); then stop U-Boot's countdown and
 - Some pmbootstrap versions reject pmaports' `deviceinfo_schema.toml`
   (`header_version` has an integer interval but no `datatype = "integer"`);
   add the datatype line locally.
+- OpenRC (0.63) treats a service variable named `ready` as its readiness
+  setting; don't use it for anything else in an init script.
 - `--src` builds drop `kernel/time/timeconst.bc` because rsync applies the
   tree's `.gitignore` (`*.bc`); building from the tarball avoids it.

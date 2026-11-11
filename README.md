@@ -64,9 +64,10 @@ upstream is preserved); the default branch is set to `plinius` on both.
   sensor and the proximity sensor (through iio-sensor-proxy) all work, and
   Phosh composites on the GPU. The packages (device, kernel, Mesa) live in
   [`postmarketos/`](postmarketos/README.md). Open items:
-  - **Modem in ModemManager.** ModemManager finds no modem: our CCCI modem is
-    driven by our own tools (`mobile-data.py`, `sms.py`), so calls, SMS and
-    mobile data are not available in Phosh yet.
+  - **Mobile data and calls in ModemManager.** The modem is in ModemManager
+    (`plinius-modemd` + the WWAN AT port: SIM PIN, LTE registration, SMS
+    storage), but its data path needs MediaTek's NetAgent `AT+EIF` handshake
+    (done by `mobile-data.py` on Debian), and voice calls are untested.
   - **Verify WiFi and audio in the session.** Connect to WiFi through
     NetworkManager and play sound through PipeWire inside a logged-in Phosh
     session.
@@ -77,7 +78,7 @@ upstream is preserved); the default branch is set to `plinius` on both.
   existing C drivers (mtk-drm, mt76, ASoC, TCPM), and the subsystems we need
   (regmap, IIO, power_supply, ASoC, mfd) have no Rust bindings yet. New
   userspace tools are written in Rust instead of Python: the modem service
-  (mobile data, SMS, and later a bridge to ModemManager), the GNSS host and
+  (`modemd/`, done; mobile data and SMS still Python), the GNSS host and
   similar daemons. Existing Python scripts are ported when they are reworked
   anyway, not as a separate rewrite.
 

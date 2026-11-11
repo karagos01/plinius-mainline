@@ -1,0 +1,50 @@
+#!/sbin/openrc-run
+# MT6878 modem userspace: answers the modem's RPC and file system (NVRAM)
+# requests, starts the modem and opens the SIM session. ModemManager starts
+# once the modem is up.
+
+description="MT6878 modem userspace (CCCI RPC and FS servers)"
+command=/usr/bin/plinius-modemd
+_ready=/run/plinius-modemd.ready
+command_args="--radio --ready-file $_ready"
+command_background=true
+pidfile="/run/$RC_SVCNAME.pid"
+output_log="/var/log/$RC_SVCNAME.log"
+error_log="/var/log/$RC_SVCNAME.log"
+
+depend() {
+	need localmount
+	after udev-settle
+	before modemmanager
+}
+
+start_pre() {
+	# the modem boots from UFS partitions: keep the UFS host awake
+	for f in /sys/bus/platform/devices/112b0000.ufshci/power/control \
+		/sys/class/scsi_device/*/device/power/control; do
+		[ -w "$f" ] && echo on > "$f"
+	done
+	modprobe mtk_ccci || return 1
+	i=0
+	while [ ! -e /dev/ccci_fs ]; do
+		i=$((i + 1))
+		[ $i -gt 50 ] && { eerror "no /dev/ccci_fs"; return 1; }
+		sleep 0.2
+	done
+	# the modem NVRAM (IMEI, calibration): device data, not packaged
+	checkpath -d -m 0700 /var/lib/modem
+}
+
+start_post() {
+	ebegin "Waiting for the modem"
+	i=0
+	while [ ! -e "$_ready" ]; do
+		i=$((i + 1))
+		if [ $i -gt 600 ] || ! kill -0 "$(cat "$pidfile" 2>/dev/null)" 2>/dev/null; then
+			eend 1 "modem did not come up, see $output_log"
+			return 1
+		fi
+		sleep 0.2
+	done
+	eend 0
+}
