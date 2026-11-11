@@ -9,12 +9,13 @@ this directory keeps them in git so the image can be rebuilt.
 | `device-volla-plinius` | `device/testing/` | `deviceinfo`, WiFi NVRAM, audio init (udev), sensor udev rule |
 | `linux-postmarketos-mediatek-mt6878` | `device/testing/` | our kernel, built from `karagos01/linux` at a pinned commit with `configs/linux.config` |
 | `plinius-modemd` | `device/testing/` | modem userspace (`../modemd`, Rust) + OpenRC service, ordered before ModemManager |
+| `modemmanager-plugin-mtk-ccci` | `device/testing/` | ModemManager plugin for the data path (`../mm-plugin-mtk-ccci`), installed with ModemManager |
 | `mesa` | `temp/` | Mesa 26.3.0 with Mali-G615 support; drop once Alpine has ≥ 26.3 |
 
 With these, Phosh runs on our native MediaTek DRM driver and composites on
 the GPU; touch, WiFi, Bluetooth, battery, sound, the accelerometer, the
 light sensor, the proximity sensor and the modem (ModemManager: SIM PIN,
-LTE registration) work. The SAR sensor also exposes
+LTE registration, mobile data over NetworkManager) work. The SAR sensor also exposes
 `in_proximity<N>_raw`, so a udev rule keeps iio-sensor-proxy off it. Open
 items are in the top-level README roadmap.
 
@@ -53,8 +54,14 @@ so that ModemManager, started after it, finds the modem on the WWAN AT port
 `/dev/wwan0at0` (generic plugin, `ccmni*` as its net ports). The modem NVRAM
 holds the IMEI and calibration and is device data, not packaged: copy
 `/var/lib/modem` (from `scripts/build.sh nvram`, or from the Debian rootfs)
-into the pmOS root, owned by root, mode 0700. Mobile data still needs the
-NetAgent (`AT+EIF`) handling of `mobile-data.py` in ModemManager.
+into the pmOS root, owned by root, mode 0700.
+
+Mobile data needs MediaTek's `+EIF` handshake, which the `mtk-ccci`
+ModemManager plugin implements (see `mm-plugin-mtk-ccci/README.md`). It
+builds against Alpine's exact ModemManager source and configuration, so
+bump `_mmver`/`_mmcommit` together with Alpine's `modemmanager`. pmOS puts
+the mobile default route into its own table (1430, used when WiFi is not
+connected).
 
 The package builds from a `karagos01/plinius-mainline` tarball at
 `_commit`; `pmbootstrap build --src scripts/modemd plinius-modemd` builds

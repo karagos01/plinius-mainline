@@ -1,0 +1,99 @@
+# DRAFT package for the Volla Phone Plinius. Not yet in pmaports.
+# See postmarketos/README.md in karagos01/plinius-mainline.
+#
+# ModemManager plugin for MediaTek modems behind the mainline CCCI driver
+# (mtk-ccci): +EIF data bearers over the ccmni net devices. The sources are
+# in mm-plugin-mtk-ccci/ of plinius-mainline (copied in by
+# install-pmaports.sh). Plugins use ModemManager's internal API, so this
+# builds against the exact ModemManager source and configuration of
+# Alpine's modemmanager package and must be rebuilt with it.
+maintainer="Jan Benedikt <karagos01@gmail.com>"
+pkgname=modemmanager-plugin-mtk-ccci
+pkgver=0.1.0
+pkgrel=0
+_mmver=1.25.95_git20261005
+_mmrel=0
+_mmcommit=7f0bf17ab518cd78925cf7e53cc0d5c42f88b41a
+pkgdesc="ModemManager plugin for MediaTek CCCI modems (Volla Phone Plinius)"
+url="https://github.com/karagos01/plinius-mainline"
+arch="aarch64"
+license="GPL-2.0-or-later"
+depends="modemmanager=$_mmver-r$_mmrel"
+install_if="device-volla-plinius modemmanager"
+makedepends="
+	dbus-dev
+	elogind-dev
+	glib-dev
+	libgudev-dev
+	libmm-glib
+	libmbim-dev
+	libqmi-dev
+	libqrtr-glib-dev
+	linux-headers
+	meson
+	polkit-dev
+	"
+_files="
+	mm-plugin-mtk-ccci.c
+	mm-broadband-modem-mtk-ccci.c
+	mm-broadband-modem-mtk-ccci.h
+	mm-broadband-bearer-mtk-ccci.c
+	mm-broadband-bearer-mtk-ccci.h
+	"
+source="https://gitlab.freedesktop.org/mobile-broadband/ModemManager/-/archive/$_mmcommit/ModemManager-$_mmcommit.tar.gz
+	$_files
+	"
+builddir="$srcdir/ModemManager-$_mmcommit"
+options="!check"
+
+prepare() {
+	default_prepare
+	mkdir -p src/plugins/mtk-ccci
+	for f in $_files; do
+		cp "$srcdir/$f" src/plugins/mtk-ccci/
+	done
+	# register the plugin next to the in-tree ones
+	awk '/^builtin_sources = \[\]/ && !done {
+		print "# plugin: mtk-ccci (out of tree)"
+		print "plugins += {\x27plugin-mtk-ccci\x27: {"
+		print "  \x27plugin\x27: true,"
+		print "  \x27module\x27: {\x27sources\x27: files(\x27mtk-ccci/mm-plugin-mtk-ccci.c\x27, \x27mtk-ccci/mm-broadband-modem-mtk-ccci.c\x27, \x27mtk-ccci/mm-broadband-bearer-mtk-ccci.c\x27), \x27include_directories\x27: plugins_incs, \x27c_args\x27: \x27-DMM_MODULE_NAME=\"mtk-ccci\"\x27},"
+		print "}}"
+		print ""
+		done = 1
+	} { print }' src/plugins/meson.build > meson.build.new
+	mv meson.build.new src/plugins/meson.build
+	grep -q plugin-mtk-ccci src/plugins/meson.build
+}
+
+build() {
+	# the configuration of Alpine's modemmanager (struct layouts depend on it)
+	abuild-meson \
+		-Db_lto=true \
+		-Dsystemdsystemunitdir=/usr/lib/systemd/system \
+		-Ddbus_policy_dir=/usr/share/dbus-1/system.d \
+		-Dgtk_doc=false \
+		-Dpolkit=permissive \
+		-Dsystemd_journal=false \
+		-Dsystemd_suspend_resume=true \
+		-Dintrospection=false \
+		-Dvapi=false \
+		-Dbash_completion=false \
+		-Dtests=false \
+		. output
+	meson compile -C output mm-plugin-mtk-ccci
+}
+
+package() {
+	install -Dm755 output/src/plugins/libmm-plugin-mtk-ccci.so \
+		"$pkgdir"/usr/lib/ModemManager/libmm-plugin-mtk-ccci.so
+}
+
+sha512sums="
+e049eecc104c989f516402ca7c21e3374c152e3840cf05c34ac91bc8e3305c83b53693bc0964f657664d4156baaac1a4e0fa35dd577733623dd669b67f1675f6  ModemManager-7f0bf17ab518cd78925cf7e53cc0d5c42f88b41a.tar.gz
+43c6d4d9b763eb097196d84f2f249ea4264994778e019fbf000b66aaa5b3f84359db0d43bd740a6212b4dc719c6eb0afc2ae94c13925c50a84c7f0aa82342c56  mm-plugin-mtk-ccci.c
+c828d23d68683d8e378d64f7105ff5259a61deca70d780b7639b7780a8c548e961c9d84784e347e0c4cdced94ef0cdc816bd51f3c7a3efc29e09d0e3f29dcb94  mm-broadband-modem-mtk-ccci.c
+0217b4bf3552fab83937139fdfcf5ec3cf09611b70564e7dc715122f5f3d544eeaa889a563891e3c1f8e61e598f4ad3be3c9ac481fe6afd48b663178d79aae4a  mm-broadband-modem-mtk-ccci.h
+190cb3b98d90c4493841b8ed0ae197a81fd2faf275aff4c5f9f46774d52b623e73401259cb4858172487a8062a063dc5d88cb25c50477a0c0b35992e89f0b7d2  mm-broadband-bearer-mtk-ccci.c
+be2429b14a6dcec2ac444ce14d44cb984ccf3267c7a9e6ed2bc5c5d081b5182d4133cb80017fe12e45c70c135878c9f698ac264fa2191a5410d77e9f5c9fa14a  mm-broadband-bearer-mtk-ccci.h
+"
