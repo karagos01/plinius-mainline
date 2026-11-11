@@ -28,7 +28,9 @@ import subprocess
 import sys
 import time
 
-AT_PORT = '/dev/ccci_at'
+# the modem's AT channel: a WWAN port on current kernels, a misc device before
+AT_PORT = next((p for p in ('/dev/wwan0at0', '/dev/ccci_at')
+                if os.path.exists(p)), '/dev/wwan0at0')
 MIPC_PORT = '/dev/ccci_mipc1'
 MIPC_OPEN = bytes.fromhex(
     '8419542400000000ff000103010028000001040002000000'

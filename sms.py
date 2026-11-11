@@ -24,7 +24,9 @@ import re
 import select
 import time
 
-AT_PORT = '/dev/ccci_at'
+# the modem's AT channel: a WWAN port on current kernels, a misc device before
+AT_PORT = next((p for p in ('/dev/wwan0at0', '/dev/ccci_at')
+                if os.path.exists(p)), '/dev/wwan0at0')
 WATCH_INTERVAL = 5
 
 GSM7 = ('@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞ\x1bÆæßÉ !"#¤%&\'()*+,-./0123456789:;<=>?'

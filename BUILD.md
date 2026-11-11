@@ -179,7 +179,7 @@ Returning to stock: `fastboot flash boot_a backup/partitions/boot_a.img`
 - `sms.py` (in the rootfs as `sms`): `sms send <number> <text>`, `sms list`,
   `sms watch [--delete]`. PDU mode, Czech (UCS2) and long messages too. Incoming
   SMS are stored on the SIM (20 slots), `--delete` removes them after printing.
-  There is only one AT channel (`/dev/ccci_at`), so the scripts take turns via
-  `flock` on the device.
+  There is only one AT channel (`/dev/wwan0at0`, `/dev/ccci_at` on older
+  kernels), so the scripts take turns via `flock` on the device.
 - UFS runtime suspend while the modem runs hangs the CPU, so
   `plinius-modem.service` disables it.
