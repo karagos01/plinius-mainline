@@ -60,14 +60,10 @@ upstream is preserved); the default branch is set to `plinius` on both.
   kernel and `device-volla-plinius` packages boots into Phosh
   (greetd + phrog + phoc on the native MediaTek DRM driver). Login, touch, colours
   (after the dither and gamma fixes), WiFi scanning in NetworkManager, Bluetooth,
-  battery in upower, the sound card, the accelerometer and the ambient light
-  sensor all work, and Phosh composites on the GPU. The packages (device,
-  kernel, Mesa) live in [`postmarketos/`](postmarketos/README.md). Open items:
-  - **Proximity sensor.** The SCP `stk_ps` proximity sensor never reports a
-    change, even when covered, so iio-sensor-proxy cannot use it (it would
-    also need `PROXIMITY_NEAR_LEVEL` from udev/hwdb). The stock sensor HAL most
-    likely sends it calibration or thresholds first. Needed for blanking the
-    display during calls.
+  battery in upower, the sound card, the accelerometer, the ambient light
+  sensor and the proximity sensor (through iio-sensor-proxy) all work, and
+  Phosh composites on the GPU. The packages (device, kernel, Mesa) live in
+  [`postmarketos/`](postmarketos/README.md). Open items:
   - **Modem in ModemManager.** ModemManager finds no modem: our CCCI modem is
     driven by our own tools (`mobile-data.py`, `sms.py`), so calls, SMS and
     mobile data are not available in Phosh yet.

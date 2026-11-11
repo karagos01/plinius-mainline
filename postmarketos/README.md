@@ -6,13 +6,15 @@ this directory keeps them in git so the image can be rebuilt.
 
 | Package | pmaports path | Contents |
 |---|---|---|
-| `device-volla-plinius` | `device/testing/` | `deviceinfo`, WiFi NVRAM, audio init (udev) |
+| `device-volla-plinius` | `device/testing/` | `deviceinfo`, WiFi NVRAM, audio init (udev), sensor udev rule |
 | `linux-postmarketos-mediatek-mt6878` | `device/testing/` | our kernel, built from `karagos01/linux` at a pinned commit with `configs/linux.config` |
 | `mesa` | `temp/` | Mesa 26.3.0 with Mali-G615 support; drop once Alpine has ≥ 26.3 |
 
 With these, Phosh runs on our native MediaTek DRM driver and composites on
-the GPU; touch, WiFi, Bluetooth, battery, sound, the accelerometer and the
-light sensor work. Open items are in the top-level README roadmap.
+the GPU; touch, WiFi, Bluetooth, battery, sound, the accelerometer, the
+light sensor and the proximity sensor work. The SAR sensor also exposes
+`in_proximity<N>_raw`, so a udev rule keeps iio-sensor-proxy off it. Open
+items are in the top-level README roadmap.
 
 ## Kernel
 

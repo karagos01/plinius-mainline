@@ -5,7 +5,7 @@ maintainer="Jan Benedikt <karagos01@gmail.com>"
 pkgname=device-volla-plinius
 pkgdesc="Volla Phone Plinius"
 pkgver=0.1
-pkgrel=3
+pkgrel=4
 url="https://postmarketos.org"
 license="MIT"
 arch="aarch64"
@@ -23,6 +23,7 @@ source="
 	mt6878-wifi-nvram.bin
 	volla-plinius-audio-init
 	90-volla-plinius-audio.rules
+	81-volla-plinius-sensors.rules
 "
 
 build() {
@@ -43,6 +44,10 @@ package() {
 		"$pkgdir"/usr/libexec/volla-plinius-audio-init
 	install -Dm644 "$srcdir"/90-volla-plinius-audio.rules \
 		"$pkgdir"/usr/lib/udev/rules.d/90-volla-plinius-audio.rules
+
+	# Keep iio-sensor-proxy on the proximity sensor, not the SAR.
+	install -Dm644 "$srcdir"/81-volla-plinius-sensors.rules \
+		"$pkgdir"/usr/lib/udev/rules.d/81-volla-plinius-sensors.rules
 }
 
 # Regenerate with: pmbootstrap checksum device-volla-plinius
@@ -52,4 +57,5 @@ sha512sums="
 5a40b8e89523ca8bb035f12fd52ec79600ad32af2f5b5318c75dfbdfc376868656c9f46a344e1c7fede8ac787359eaa03d22bf737bd69cd5bd47dde919f041f5  mt6878-wifi-nvram.bin
 5ade1dbaa75a353697ba9c9d1d034f468a155cc778b88348ea5cbea7242554717a5a1e80f189afbac1619d1c6a55fed641bded1c0b23e9ce82329527d8752365  volla-plinius-audio-init
 3579b6356c2812ea6e7c402bf7bf1a6d0a3878492d4f18cf2ae557ffc5cd2face919b3fc9f6ff1d8145d98eef8394b2a55e13c3306f862d05038eee9855814be  90-volla-plinius-audio.rules
+90326f9c1b4463640ee63396f153a2c4b46875cb9c9ef7e985a3ee696a716dbecff7b367f40ef32f6dbf133a2386247beab5b2e40cba017e7ee388d573661c76  81-volla-plinius-sensors.rules
 "

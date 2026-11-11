@@ -1,0 +1,4 @@
+# The SAR sensor (mtk-scp-sar) exposes in_proximity<N>_raw channels, which
+# iio-sensor-proxy would also take for a proximity sensor. Only the real
+# one (mtk-scp-proximity, with in_proximity_nearlevel) should be used.
+SUBSYSTEM=="iio", ATTR{name}=="mtk-scp-sar", ENV{IIO_SENSOR_PROXY_TYPE}=""
