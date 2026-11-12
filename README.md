@@ -67,9 +67,6 @@ upstream is preserved); the default branch is set to `plinius` on both.
   - **Calls: loose ends.** Incoming and outgoing voice calls work in Phosh
     (GNOME Calls over ModemManager: MIPC call approval in the `mtk-ccci`
     plugin, call audio through UCM and `plinius-speechd`). Left over:
-    - PulseAudio opens the capture side at 44100 Hz, which the ADDA DAI
-      rejects (`rate 44100 invalid`); constrain the ADDA rates so the
-      sound server picks a supported one.
     - The microphone level during a call (hostless modem path) is low;
       tune the uplink gain.
     - GNOME Calls once disappeared when a call was accepted, after several
