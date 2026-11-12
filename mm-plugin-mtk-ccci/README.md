@@ -25,9 +25,35 @@ APN. So the modem never picks context 0 for a new connection (minimum
 profile id 1), and the bearer falls back to context 0 when context 1 is
 refused.
 
+Voice calls are the generic AT ones (`ATA`, `ATH`, `ATD`, `+CLCC`) with
+three fixes:
+
+1. **Incoming calls need approval over MIPC.** The modem does not ring
+   by itself and sends no `RING`/`+CRING`/`+CLIP` on the AT port. It
+   sends the MIPC command `CALL_APPROVE_INCOMING_CMD` (0x8901) to the MIPC
+   client that registered for it and waits for `CALL_APPROVE_INCOMING_RSP`
+   (0x8902). The plugin opens `/dev/ccci_mipc0` and registers for the
+   command. It approves every incoming call, then reloads the call list,
+   where the call shows up as ringing. It also registers for the MIPC call
+   indications (0x4901, 0x4902) and reloads the call list on each one.
+   This is how a call ends when the other side hangs up: the modem sends
+   no `NO CARRIER` either. `mm-mtk-ccci-mipc.c` describes the message
+   format.
+2. **`AT+CLCC=?` fails** with `+CME ERROR: 100`, although `AT+CLCC`
+   works. The generic code then drops a ringing call after 10 s and does
+   not follow the call states. So the plugin probes `AT+CLCC` itself and
+   creates calls with the `+CLCC` behaviour.
+3. **International numbers come without the leading `+`**: `+CLCC`
+   reports them only with type 145. The plugin adds the `+`, so numbers
+   in the call log can be dialled back.
+
+The call audio is not handled here: see `plinius-speechd` in
+`modemd/` and the UCM profile of the device package.
+
 Plugins use ModemManager's internal API: the pmOS package
 `postmarketos/modemmanager-plugin-mtk-ccci` builds this directory inside
 the exact ModemManager source and configuration of Alpine's `modemmanager`
 package. Tested with ModemManager 1.25.95 (git 7f0bf17a) on postmarketOS
 edge: SIM PIN, LTE registration, connect/disconnect through `mmcli` and
-NetworkManager, IPv4 + IPv6, DNS.
+NetworkManager, IPv4 + IPv6, DNS, incoming and outgoing calls in Phosh
+(gnome-calls).

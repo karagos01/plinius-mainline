@@ -20,7 +20,9 @@ typedef struct _MMBroadbandModemMtkCcci MMBroadbandModemMtkCcci;
 typedef struct _MMBroadbandModemMtkCcciClass MMBroadbandModemMtkCcciClass;
 
 struct _MMBroadbandModemMtkCcci {
-    MMBroadbandModem parent;
+    MMBroadbandModem      parent;
+    struct _MMMtkCcciMipc *mipc; /* incoming call approval */
+    gboolean               clcc_supported;
 };
 
 struct _MMBroadbandModemMtkCcciClass {

@@ -2,15 +2,15 @@
 # See postmarketos/README.md in karagos01/plinius-mainline.
 #
 # ModemManager plugin for MediaTek modems behind the mainline CCCI driver
-# (mtk-ccci): +EIF data bearers over the ccmni net devices. The sources are
-# in mm-plugin-mtk-ccci/ of plinius-mainline (copied in by
-# install-pmaports.sh). Plugins use ModemManager's internal API, so this
+# (mtk-ccci): +EIF data bearers over the ccmni net devices and incoming
+# call approval over MIPC. The sources are in mm-plugin-mtk-ccci/ of
+# plinius-mainline (copied in by install-pmaports.sh). Plugins use ModemManager's internal API, so this
 # builds against the exact ModemManager source and configuration of
 # Alpine's modemmanager package and must be rebuilt with it.
 maintainer="Jan Benedikt <karagos01@gmail.com>"
 pkgname=modemmanager-plugin-mtk-ccci
 pkgver=0.1.0
-pkgrel=0
+pkgrel=1
 _mmver=1.25.95_git20261005
 _mmrel=0
 _mmcommit=7f0bf17ab518cd78925cf7e53cc0d5c42f88b41a
@@ -39,6 +39,8 @@ _files="
 	mm-broadband-modem-mtk-ccci.h
 	mm-broadband-bearer-mtk-ccci.c
 	mm-broadband-bearer-mtk-ccci.h
+	mm-mtk-ccci-mipc.c
+	mm-mtk-ccci-mipc.h
 	"
 source="https://gitlab.freedesktop.org/mobile-broadband/ModemManager/-/archive/$_mmcommit/ModemManager-$_mmcommit.tar.gz
 	$_files
@@ -57,7 +59,7 @@ prepare() {
 		print "# plugin: mtk-ccci (out of tree)"
 		print "plugins += {\x27plugin-mtk-ccci\x27: {"
 		print "  \x27plugin\x27: true,"
-		print "  \x27module\x27: {\x27sources\x27: files(\x27mtk-ccci/mm-plugin-mtk-ccci.c\x27, \x27mtk-ccci/mm-broadband-modem-mtk-ccci.c\x27, \x27mtk-ccci/mm-broadband-bearer-mtk-ccci.c\x27), \x27include_directories\x27: plugins_incs, \x27c_args\x27: \x27-DMM_MODULE_NAME=\"mtk-ccci\"\x27},"
+		print "  \x27module\x27: {\x27sources\x27: files(\x27mtk-ccci/mm-plugin-mtk-ccci.c\x27, \x27mtk-ccci/mm-broadband-modem-mtk-ccci.c\x27, \x27mtk-ccci/mm-broadband-bearer-mtk-ccci.c\x27, \x27mtk-ccci/mm-mtk-ccci-mipc.c\x27), \x27include_directories\x27: plugins_incs, \x27c_args\x27: \x27-DMM_MODULE_NAME=\"mtk-ccci\"\x27},"
 		print "}}"
 		print ""
 		done = 1
@@ -92,8 +94,10 @@ package() {
 sha512sums="
 e049eecc104c989f516402ca7c21e3374c152e3840cf05c34ac91bc8e3305c83b53693bc0964f657664d4156baaac1a4e0fa35dd577733623dd669b67f1675f6  ModemManager-7f0bf17ab518cd78925cf7e53cc0d5c42f88b41a.tar.gz
 43c6d4d9b763eb097196d84f2f249ea4264994778e019fbf000b66aaa5b3f84359db0d43bd740a6212b4dc719c6eb0afc2ae94c13925c50a84c7f0aa82342c56  mm-plugin-mtk-ccci.c
-c828d23d68683d8e378d64f7105ff5259a61deca70d780b7639b7780a8c548e961c9d84784e347e0c4cdced94ef0cdc816bd51f3c7a3efc29e09d0e3f29dcb94  mm-broadband-modem-mtk-ccci.c
-0217b4bf3552fab83937139fdfcf5ec3cf09611b70564e7dc715122f5f3d544eeaa889a563891e3c1f8e61e598f4ad3be3c9ac481fe6afd48b663178d79aae4a  mm-broadband-modem-mtk-ccci.h
+4d568697218264ee1f5d1087345a5ef495026ac5b80937670728bfff024d192d0df0377b2030b14683768673dba15f7e97f0262fbf0f253cbb2ee3dfe3d6011c  mm-broadband-modem-mtk-ccci.c
+68382b49a13a7c705810189907c10ca413f8c3ac59cbb7bfe4611d3ab5f7c8c24e1eec647967d5a66456eddd29401edc112e872f5bd3ddcac1d1e286b8793968  mm-broadband-modem-mtk-ccci.h
 190cb3b98d90c4493841b8ed0ae197a81fd2faf275aff4c5f9f46774d52b623e73401259cb4858172487a8062a063dc5d88cb25c50477a0c0b35992e89f0b7d2  mm-broadband-bearer-mtk-ccci.c
 be2429b14a6dcec2ac444ce14d44cb984ccf3267c7a9e6ed2bc5c5d081b5182d4133cb80017fe12e45c70c135878c9f698ac264fa2191a5410d77e9f5c9fa14a  mm-broadband-bearer-mtk-ccci.h
+1b0dc246910f197c71684b3f477915ee85cb672d50f641fbd75db8315cfa91bdc799f9971f46a676a62caedeca99dda8ddd3e21c963ac362106f13bf7e10ea87  mm-mtk-ccci-mipc.c
+4e683e99d7ed90eeb670a20cb4c1ccdf28f66a2c1d936bd96334aa0a024804a863dca927efbe089d6415aca41f496201165f16727f94ec2b7dcfc2fa74c2335d  mm-mtk-ccci-mipc.h
 "
