@@ -1,0 +1,15 @@
+#!/sbin/openrc-run
+# Call audio for the MT6878 modem: turns the modem's speech path on while
+# the UCM "Voice Call" verb routes it to the codec (callaudiod selects it
+# for a call). Waits for /dev/ccci_aud and the sound card by itself.
+
+description="MT6878 modem call audio"
+supervisor=supervise-daemon
+command=/usr/bin/plinius-speechd
+output_log="/var/log/$RC_SVCNAME.log"
+error_log="/var/log/$RC_SVCNAME.log"
+
+depend() {
+	need localmount
+	after plinius-modemd alsa
+}

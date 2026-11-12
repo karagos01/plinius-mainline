@@ -1,0 +1,4 @@
+#!/bin/sh
+rc-update -q add plinius-modemd default
+rc-update -q add plinius-speechd default
+exit 0

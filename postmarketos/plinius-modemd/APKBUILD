@@ -3,17 +3,18 @@
 maintainer="Jan Benedikt <karagos01@gmail.com>"
 pkgname=plinius-modemd
 pkgver=0.1.0
-pkgrel=0
-pkgdesc="Volla Phone Plinius (MT6878) modem userspace: CCCI RPC and NVRAM file system servers"
+pkgrel=1
+pkgdesc="Volla Phone Plinius (MT6878) modem userspace: CCCI RPC and NVRAM file system servers, call audio"
 url="https://github.com/karagos01/plinius-mainline"
 arch="aarch64"
 license="GPL-2.0-only"
 makedepends="cargo"
-install="$pkgname.post-install"
-_commit="66721a4f095edeb1a11e09c8ad7df333666ca1f7"
+install="$pkgname.post-install $pkgname.post-upgrade"
+_commit="3e1993525496ade04de226ac541e1825be72e7b7"
 source="
 	plinius-mainline-$_commit.tar.gz::https://github.com/karagos01/plinius-mainline/archive/$_commit.tar.gz
 	plinius-modemd.initd
+	plinius-speechd.initd
 "
 builddir="$srcdir/modemd"
 options="net" # cargo fetch
@@ -39,10 +40,13 @@ check() {
 package() {
 	install -Dm755 target/release/plinius-modemd "$pkgdir"/usr/bin/plinius-modemd
 	install -Dm755 "$srcdir"/plinius-modemd.initd "$pkgdir"/etc/init.d/plinius-modemd
+	install -Dm755 target/release/plinius-speechd "$pkgdir"/usr/bin/plinius-speechd
+	install -Dm755 "$srcdir"/plinius-speechd.initd "$pkgdir"/etc/init.d/plinius-speechd
 }
 
 # Regenerate with: pmbootstrap checksum plinius-modemd (once _commit is pushed)
 sha512sums="
-c658fa9740051c654cdb424bcb36843ffa19f8fd27a329bf8e2fb39bda0f783f0d45055ea7c308afabe688676d89734a6fe6e27f4a0d67093acd63a80b639501  plinius-mainline-66721a4f095edeb1a11e09c8ad7df333666ca1f7.tar.gz
+e0194acca3c227853abc0d8126d5de65c2f4351453858a1d71f0ce99478a00e4c4d02be2efb4f56e59b7a9c2c9542ae0e55b6f899dc4fdd3198b3c95fb6477f7  plinius-mainline-3e1993525496ade04de226ac541e1825be72e7b7.tar.gz
 5ab84d457dc3b8e58e85209c53dd0bcf1b90c0590c9f3be0de9ea0274a9adc884aaf421fd17cc32e27c02876463b924c7804cc3dc70795b417e0f7370f02f5da  plinius-modemd.initd
+d4f2e95c83eaec86e98bb7436528e3f724719ff86ad5efcdf4fcd039200a11e9eef3aab737ca6ca18d1a35574ae8bb7ba0c46a5aeb2a1c47a029ee7c9ec64bde  plinius-speechd.initd
 "
