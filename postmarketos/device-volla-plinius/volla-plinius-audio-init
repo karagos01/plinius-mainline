@@ -1,7 +1,0 @@
-#!/bin/sh
-# Route the mt6878-mt6369 card to the loudspeaker. Without a UCM profile
-# nothing enables the aw87565 amplifier path, so PipeWire would play into a
-# muted output. Lineout Volume 12/18 is a little above the stock default (9).
-amixer -c mt6878mt6369 -q cset name='Speaker Switch Switch' 1
-amixer -c mt6878mt6369 -q cset name='Receiver Switch Switch' 0
-amixer -c mt6878mt6369 -q cset name='Lineout Volume' 12

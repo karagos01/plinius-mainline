@@ -1,2 +1,0 @@
-# Enable the loudspeaker path once the sound card is registered.
-ACTION=="add", SUBSYSTEM=="sound", KERNEL=="controlC*", ATTRS{id}=="mt6878mt6369", RUN+="/usr/libexec/volla-plinius-audio-init"
