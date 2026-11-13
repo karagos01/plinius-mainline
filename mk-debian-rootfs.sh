@@ -80,6 +80,14 @@ RuntimeWatchdogSec=20s
 RebootWatchdogSec=2min
 EOF
 
+# Keep SysRq off: during a 2G call the radio couples noise into a connected
+# UART cable, which the kernel reads as BREAK + random SysRq keys (it killed
+# all tasks and rebooted the phone). systemd's default would turn it back on.
+# To use it on purpose, send BREAK and type "plinius" on the UART (the
+# kernel's CONFIG_MAGIC_SYSRQ_SERIAL_SEQUENCE), then BREAK + the SysRq key.
+install -d $R/etc/sysctl.d
+echo 'kernel.sysrq = 0' > $R/etc/sysctl.d/90-plinius-sysrq.conf
+
 # Root autologin on the UART and USB ACM consoles
 for tty in serial-getty@ttyS0 serial-getty@ttyGS0; do
 	install -d $R/etc/systemd/system/$tty.service.d

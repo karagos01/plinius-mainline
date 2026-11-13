@@ -68,6 +68,12 @@ the `modem_a` partition, so it does not need to be in the rootfs.
 UART (FT232R, 921600 8N1 on `/dev/ttyUSB0`). The UART is needed only for
 `dev-boot.sh` and `update-debian.sh`, which use it to stop the U-Boot countdown.
 
+Magic SysRq is off by default, also over the UART: during a 2G call the radio
+couples noise into a connected UART cable, which the kernel would read as BREAK
+plus random SysRq keys (kill all tasks, reboot). To use it on a hung phone,
+send BREAK and type `plinius` within 5 seconds (this enables SysRq until the
+next boot), then send BREAK followed by the SysRq key, e.g. `b` to reboot.
+
 ## Build
 
 ```
