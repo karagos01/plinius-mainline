@@ -3,7 +3,7 @@
 maintainer="Jan Benedikt <karagos01@gmail.com>"
 pkgname=plinius-modemd
 pkgver=0.1.0
-pkgrel=1
+pkgrel=2
 pkgdesc="Volla Phone Plinius (MT6878) modem userspace: CCCI RPC and NVRAM file system servers, call audio"
 url="https://github.com/karagos01/plinius-mainline"
 arch="aarch64"
@@ -47,6 +47,6 @@ package() {
 # Regenerate with: pmbootstrap checksum plinius-modemd (once _commit is pushed)
 sha512sums="
 e0194acca3c227853abc0d8126d5de65c2f4351453858a1d71f0ce99478a00e4c4d02be2efb4f56e59b7a9c2c9542ae0e55b6f899dc4fdd3198b3c95fb6477f7  plinius-mainline-3e1993525496ade04de226ac541e1825be72e7b7.tar.gz
-5ab84d457dc3b8e58e85209c53dd0bcf1b90c0590c9f3be0de9ea0274a9adc884aaf421fd17cc32e27c02876463b924c7804cc3dc70795b417e0f7370f02f5da  plinius-modemd.initd
+8ce2c04ce2d29f22c2fd7f3c036a9c3bb595b06e45730ff78a84dc0d8713a113a42d8f281518ed69e907687a8375fd898e3bdd1e977115471c3abe54217897c4  plinius-modemd.initd
 d4f2e95c83eaec86e98bb7436528e3f724719ff86ad5efcdf4fcd039200a11e9eef3aab737ca6ca18d1a35574ae8bb7ba0c46a5aeb2a1c47a029ee7c9ec64bde  plinius-speechd.initd
 "

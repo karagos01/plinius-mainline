@@ -190,5 +190,7 @@ Returning to stock: `fastboot flash boot_a backup/partitions/boot_a.img`
   SMS are stored on the SIM (20 slots), `--delete` removes them after printing.
   There is only one AT channel (`/dev/wwan0at0`, `/dev/ccci_at` on older
   kernels), so the scripts take turns via `flock` on the device.
-- UFS runtime suspend while the modem runs hangs the CPU, so
-  `plinius-modem.service` disables it.
+- UFS runtime suspend is left enabled: the SoC can only put VCORE to sleep
+  while the UFS host is suspended. An old hang of UFS runtime suspend with the
+  modem running no longer reproduces; if it comes back, write `on` to
+  `/sys/bus/platform/devices/112b0000.ufshci/power/control`.

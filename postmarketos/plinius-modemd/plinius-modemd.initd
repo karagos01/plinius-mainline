@@ -19,11 +19,6 @@ depend() {
 }
 
 start_pre() {
-	# the modem boots from UFS partitions: keep the UFS host awake
-	for f in /sys/bus/platform/devices/112b0000.ufshci/power/control \
-		/sys/class/scsi_device/*/device/power/control; do
-		[ -w "$f" ] && echo on > "$f"
-	done
 	modprobe mtk_ccci || return 1
 	i=0
 	while [ ! -e /dev/ccci_fs ]; do
