@@ -38,23 +38,51 @@ upstream is preserved); the default branch is set to `plinius` on both.
 
 ## Roadmap
 
-- **Low-power suspend (SPM/LPM).** Suspend to idle runs, but the firmware (TF-A)
-  rejects the system-level low-power state: the `s2idle` cpuidle state on CPU0
-  is always rejected, PSCI offers no `SYSTEM_SUSPEND` (only `s2idle` in
-  `mem_sleep`) and the `mcusysoff`/`system-vcore` idle states are mostly
-  rejected too. As a result a suspended phone draws about as much as an idle
-  one with the display off. Measured on battery (2026-11-09):
+- **Standby power.** The SoC now reaches its deep idle states at runtime: with
+  the display off the `system-vcore` cpuidle state lets SPM put the 26 MHz
+  clock and VCORE to sleep (needs the APU host driver, the UFS rtff-mtcmos,
+  the mtu3/SD/I2C context restore and the LVTS fixes). Measured unplugged on
+  Debian (2026-11-20): ~53 mA idle with the display off, down from ~143 mA.
+  Incoming calls and SMS still wake the phone (SMS needs `AT+CNMI=2,1`).
+  The MT6375 fuel gauge reads about twice the stock SH366100 gauge (stock
+  idle shows 38-41 mA on the same counter), so absolute numbers need
+  calibration. Open items:
+  - 26M/VCORE sleep does not happen while WiFi is associated (WiFi power
+    save, multicast filtering, DTIM).
+  - Calibrate the MT6375 current counter; long unplugged soak test.
 
-  | State | Battery current |
-  |---|---|
-  | display on | ~356 mA |
-  | display off, awake | ~143 mA |
-  | `s2idle` (5 min, unplugged) | ~142 mA |
-
-  Likely needs the MediaTek SPM firmware and low-power manager bring-up that the
-  stock kernel uses (`mtk-lpm`). Rejected idle states themselves do not cost
-  power: disabling them changed nothing. WiFi power save brings no measurable
-  saving and stays off.
+- **System suspend (s2idle) — parked.** Investigated on pmOS (2026-11-20).
+  `s2idle` itself works: the power key and the RTC wake it and Phosh survives
+  it. Because runtime VCORE idle already gives most of the saving, battery
+  auto-suspend in Phosh stays **off** (`sleep-inactive-battery-type
+  'nothing'`). What a proper suspend still needs:
+  - **Modem wake-ups.** The CCIF interrupt is a wake source now (kernel
+    `mtk-ccci: let the CCIF interrupt wake the system`), so calls and SMS
+    wake the phone. But the modem also writes its NVRAM through `ccci_fs`
+    (channel 14) every 20-65 s, and every write wakes the system. Needed:
+    let the modem server handle the request and suspend again without
+    waking userspace/the display, or find out why the modem writes so often
+    (stock may batch these or the modem may expect a low-power indication
+    from the AP).
+  - **Display on after every resume.** gsd-power turns the screen on after
+    each wake-up (laptop behaviour). Non-user wakes (modem fs, RTC) must not
+    light the screen; only the power key, calls and SMS should.
+  - **Phosh notification loop.** gsd-power sends a critical "Automatic
+    suspend" warning; with `wakeup-screen-triggers ['urgency']` Phosh lights
+    the screen, which resets the idle timer, so the phone never suspends.
+    Removing `urgency` from the triggers breaks the loop (but then other
+    urgent notifications no longer wake the screen either).
+  - **Kernel errors on every suspend:** `mtk-mfg-pmdomain: GPUFreq IPI
+    command 6 timed out`; once `irq 309: nobody cared` (`mtk_apu_irq`), after
+    which the IRQ got disabled.
+  - `mtu3_suspend` returns `-EBUSY` with a USB cable attached, which aborts
+    the suspend (test unplugged or with RTC wake).
+  - Measure the actual saving of s2idle vs. runtime VCORE idle before
+    putting more work into it.
+  - **Do not set `printk.console_suspend=N`** (the console debugging switch):
+    the kernel then switches VT on every suspend, elogind pauses the DRM
+    device, phoc loses the output and Phosh exits back to the greeter, which
+    looks like a reboot.
 
 - **postmarketOS / Phosh.** A pmOS image built with `pmbootstrap` from our
   kernel and `device-volla-plinius` packages boots into Phosh
