@@ -98,7 +98,8 @@ The rootfs contains:
 - network: usb0 172.16.42.1 with DHCP for the PC, wlan0 via DHCP,
 - ssh for root and the `volla` user with the key `~/.ssh/id_ed25519.pub`
   (passwords are locked),
-- autologin on `ttyS0` and `ttyGS0`,
+- root autologin on `ttyGS0` (USB ACM); `ttyS0` (UART) only shows a login
+  prompt, as noise on the UART cable would otherwise type into a root shell,
 - the modem services.
 
 Re-running the `rootfs` step only updates the configuration; debootstrap is not

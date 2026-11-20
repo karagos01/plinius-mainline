@@ -2,7 +2,7 @@
 # Build a Debian (trixie, arm64) rootfs for Plinius in out/debian-rootfs:
 # debootstrap through qemu-user, the kernel modules of src/build-linux, the
 # WiFi NVRAM, USB gadget networking (172.16.42.1, DHCP for the host),
-# root ssh with the host key, root autologin on the serial consoles and
+# root ssh with the host key, root autologin on the USB ACM console and
 # the modem services.
 #   usage: sudo mk-debian-rootfs.sh [ssh-pubkey]
 #   env: WIFI_SSID / WIFI_PSK to preconfigure wlan0
@@ -88,15 +88,21 @@ EOF
 install -d $R/etc/sysctl.d
 echo 'kernel.sysrq = 0' > $R/etc/sysctl.d/90-plinius-sysrq.conf
 
-# Root autologin on the UART and USB ACM consoles
-for tty in serial-getty@ttyS0 serial-getty@ttyGS0; do
-	install -d $R/etc/systemd/system/$tty.service.d
-	cat > $R/etc/systemd/system/$tty.service.d/autologin.conf <<'EOF'
+# Root autologin on the USB ACM console only. A UART cable picks up radio
+# noise during calls and when the USB cable is unplugged; with autologin the
+# noise was typed into a root shell, so ttyS0 keeps a plain login prompt.
+install -d $R/etc/systemd/system/serial-getty@ttyGS0.service.d
+cat > $R/etc/systemd/system/serial-getty@ttyGS0.service.d/autologin.conf <<'EOF'
 [Service]
 ExecStart=
 ExecStart=-/sbin/agetty --autologin root --keep-baud 921600,115200 %I $TERM
 EOF
-done
+install -d $R/etc/systemd/system/serial-getty@ttyS0.service.d
+cat > $R/etc/systemd/system/serial-getty@ttyS0.service.d/autologin.conf <<'EOF'
+[Service]
+ExecStart=
+ExecStart=-/sbin/agetty --keep-baud 921600,115200 %I $TERM
+EOF
 ln -sf /lib/systemd/system/serial-getty@.service \
 	$R/etc/systemd/system/getty.target.wants/serial-getty@ttyGS0.service
 
