@@ -166,15 +166,21 @@ EOF
 		$R/etc/systemd/system/multi-user.target.wants/wpa_supplicant@wlan0.service
 fi
 
-# WiFi stability: the mt7921/connac radio self-disconnects (reason=3
-# locally_generated) with power-save on, even at full signal, and once it
-# wedges it cannot be recovered in place (a module reload fails -110: connsys
-# MCU will not re-handshake without a full power cycle). So: (1) keep power-save
-# off whenever wlan0 appears, and (2) a watchdog that gently re-associates on a
-# drop and escalates to a wpa_supplicant restart -- never unloading the module.
+# WiFi power: with 802.11 power save off the connsys keeps the SoC out of its
+# 26M/VCORE sleep (~149 mA standby while associated). Power save on plus the
+# firmware low power mode (mt7921_soc ps_mdtim: drops broadcast and unjoined
+# multicast, every 3rd DTIM) gives ~41 mA; a 6.9 h soak had no disconnect. In
+# the low power mode a host that does not know the phone yet may not reach it
+# over WiFi (broadcast ARP is dropped); use the USB network for development.
+# A wedged radio cannot be recovered in place (a module reload fails -110:
+# connsys MCU will not re-handshake without a full power cycle), so a watchdog
+# gently re-associates on a drop and escalates to a wpa_supplicant restart --
+# never unloading the module.
 cat > $R/etc/udev/rules.d/70-wlan-powersave.rules <<'EOF'
-ACTION=="add", SUBSYSTEM=="net", KERNEL=="wlan0", RUN+="/usr/sbin/iw dev wlan0 set power_save off"
+ACTION=="add", SUBSYSTEM=="net", KERNEL=="wlan0", RUN+="/usr/sbin/iw dev wlan0 set power_save on"
 EOF
+install -d $R/etc/modprobe.d
+echo "options mt7921_soc ps_mdtim=3" > $R/etc/modprobe.d/mt7921-soc.conf
 install -d $R/usr/local/sbin
 cat > $R/usr/local/sbin/wlan-watchdog.sh <<'EOF'
 #!/bin/sh
