@@ -1,0 +1,10 @@
+#!/bin/sh
+# Announce the wlan0 IPv4 address every minute with an unsolicited ARP.
+# In the WiFi firmware low power mode broadcast ARP requests rarely reach the
+# phone, so the router could not resolve it and dropped replies to it.
+while :; do
+	ip=$(ip -4 -o addr show dev wlan0 2>/dev/null |
+		awk '{ sub("/.*", "", $4); print $4; exit }')
+	[ -n "$ip" ] && arping -q -U -c 1 -I wlan0 "$ip"
+	sleep 60
+done
