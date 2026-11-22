@@ -17,7 +17,9 @@ source="
 	plinius-speechd.initd
 "
 builddir="$srcdir/modemd"
-options="net" # cargo fetch
+# cargo fetch; build in QEMU: crossdirect links Rust through the native cross
+# gcc, which then cannot find its own files (crtbeginS.o, liblto_plugin.so)
+options="net !pmb:crossdirect"
 
 unpack() {
 	default_unpack

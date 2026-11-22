@@ -86,6 +86,10 @@ running Linux, label `pmOS_root`); then stop U-Boot's countdown and
 - Some pmbootstrap versions reject pmaports' `deviceinfo_schema.toml`
   (`header_version` has an integer interval but no `datatype = "integer"`);
   add the datatype line locally.
+- `plinius-modemd` builds in QEMU (`!pmb:crossdirect`), and pmbootstrap
+  3.12 still points `RUSTC_WRAPPER` at sccache there, which the build
+  chroot does not have: build it with `pmbootstrap --no-ccache build
+  plinius-modemd`.
 - OpenRC (0.63) treats a service variable named `ready` as its readiness
   setting; don't use it for anything else in an init script.
 - `--src` builds drop `kernel/time/timeconst.bc` because rsync applies the
