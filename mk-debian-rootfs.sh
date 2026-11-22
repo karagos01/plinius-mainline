@@ -14,7 +14,7 @@ B=src/build-linux
 
 if [ ! -x $R/sbin/init ]; then
 	debootstrap --arch=arm64 --variant=minbase \
-		--include=systemd-sysv,udev,dbus,kmod,iproute2,iputils-ping,openssh-server,sudo,ca-certificates,wpasupplicant,hostapd,iw,wireless-regdb,nano,less,procps,psmisc,e2fsprogs,dosfstools,util-linux,bash-completion,locales,tzdata,curl,wget,netbase,systemd-timesyncd,systemd-resolved,apt-utils,htop,usbutils,i2c-tools,file \
+		--include=systemd-sysv,udev,dbus,kmod,iproute2,iputils-ping,iputils-arping,openssh-server,sudo,ca-certificates,wpasupplicant,hostapd,iw,wireless-regdb,nano,less,procps,psmisc,e2fsprogs,dosfstools,util-linux,bash-completion,locales,tzdata,curl,wget,netbase,systemd-timesyncd,systemd-resolved,apt-utils,htop,usbutils,i2c-tools,file \
 		trixie $R http://deb.debian.org/debian
 fi
 
@@ -218,6 +218,35 @@ WantedBy=timers.target
 EOF
 ln -sf /etc/systemd/system/wlan-watchdog.timer \
 	$R/etc/systemd/system/timers.target.wants/wlan-watchdog.timer
+
+# In the firmware low power mode broadcast ARP requests rarely reach the phone,
+# so the router could not find it and dropped replies to it (22-35 % of pings
+# to the gateway failed). An unsolicited ARP every minute keeps the router's
+# entry fresh: 2 failures in 30, both before the first refresh took effect.
+cat > $R/usr/local/sbin/wlan-garp.sh <<'EOF'
+#!/bin/sh
+# wlan-garp.sh: announce the wlan0 IPv4 address every minute
+while :; do
+	ip=$(ip -4 -o addr show dev wlan0 2>/dev/null | awk '{sub("/.*", "", $4); print $4; exit}')
+	[ -n "$ip" ] && arping -q -U -c 1 -I wlan0 "$ip"
+	sleep 60
+done
+EOF
+chmod +x $R/usr/local/sbin/wlan-garp.sh
+cat > $R/etc/systemd/system/wlan-garp.service <<'EOF'
+[Unit]
+Description=Keep the router's ARP entry for wlan0 fresh
+After=network.target
+[Service]
+ExecStart=/usr/local/sbin/wlan-garp.sh
+Restart=always
+RestartSec=10
+[Install]
+WantedBy=multi-user.target
+EOF
+install -d $R/etc/systemd/system/multi-user.target.wants
+ln -sf /etc/systemd/system/wlan-garp.service \
+	$R/etc/systemd/system/multi-user.target.wants/wlan-garp.service
 
 sed -i 's/^# *\(en_US.UTF-8\|cs_CZ.UTF-8\)/\1/' $R/etc/locale.gen
 echo LANG=cs_CZ.UTF-8 > $R/etc/default/locale
