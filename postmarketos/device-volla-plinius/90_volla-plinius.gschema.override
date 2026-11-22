@@ -1,0 +1,5 @@
+# No automatic suspend on battery, also on the greeter: system suspend is
+# not usable yet, and the warning before it (critical urgency) lights the
+# screen up and resets the idle time, every 7.5 minutes.
+[org.gnome.settings-daemon.plugins.power]
+sleep-inactive-battery-type='nothing'
