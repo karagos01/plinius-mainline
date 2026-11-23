@@ -48,13 +48,14 @@ upstream is preserved); the default branch is set to `plinius` on both.
   broadcast ARP in that mode. The WFDMA is reinitialised on every wake; the
   DMA is stopped and drained first, so the reinit neither wedges the link nor
   drops the frames received before it. Measured unplugged with the display
-  off and WiFi associated: Debian ~41 mA (21.6 h), postmarketOS at the
-  greeter ~38 mA (6.6 h overnight), down from ~143 mA at the start
-  (~149 mA with WiFi power save off). Incoming calls and SMS still wake the
-  phone (SMS needs `AT+CNMI=2,1`). The MT6375 fuel gauge reads about twice
-  the stock SH366100 gauge (stock idle shows 38-41 mA on the same counter),
-  so absolute numbers need calibration. Open items:
-  - Calibrate the MT6375 current counter.
+  off and WiFi associated: Debian ~20 mA (21.6 h), postmarketOS at the
+  greeter ~19 mA (6.6 h overnight), about what the stock system draws idle
+  (~21 mA); it was ~72 mA at the start, and is ~75 mA with WiFi power save
+  off. Incoming calls and SMS still wake the phone (SMS needs
+  `AT+CNMI=2,1`). The figures come from the MT6375 coulomb counter,
+  calibrated (2026-11-23) against the board's SH366100 gauge: with the vendor
+  DT's 1 mOhm sense resistor it counted exactly twice as much, so the DT sets
+  2 mOhm. Open items:
   - On Debian, two of ~30 boots so far had WiFi authentication time out after
     boot; not reproduced on purpose, a diagnostic hook in the watchdog waits
     for it.

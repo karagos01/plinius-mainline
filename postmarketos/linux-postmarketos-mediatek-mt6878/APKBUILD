@@ -11,7 +11,7 @@
 maintainer="Jan Benedikt <karagos01@gmail.com>"
 pkgname=linux-postmarketos-mediatek-mt6878
 pkgver=7.2_git20261122
-pkgrel=3
+pkgrel=4
 pkgdesc="Mainline kernel for MT6878 devices (Volla Phone Plinius bring-up)"
 arch="aarch64"
 _carch="arm64"
@@ -36,7 +36,7 @@ makedepends="
 "
 
 _repository="linux"
-_commit="238946f2e4c617066a80578d200321b0d0940eb8"
+_commit="52363aeb26f934296b6b9a0797be62c1fc6cd3f5"
 _config="config-$_flavor.$arch"
 source="
 	$pkgname-$_commit.tar.gz::https://github.com/karagos01/$_repository/archive/$_commit.tar.gz
@@ -84,6 +84,6 @@ package() {
 
 # Regenerate with: pmbootstrap checksum linux-postmarketos-mediatek-mt6878
 sha512sums="
-4183f6498b518d7d9b70d0d88a1dd5aabba14f0d2a2ae471a3acba42be3794ef2a05a073f86793af80ac93126f53a962a61a264f71ba2c5cba2f325e8d77b9db  linux-postmarketos-mediatek-mt6878-238946f2e4c617066a80578d200321b0d0940eb8.tar.gz
+431dacd2f106e41b9d3cb1a8f8f1de4777382edd5ac35d66d4045827cddb6641428dbb354f14825c6027b7e81db2a19d379d1f2c8a2fba0c89607ebb74ce068a  linux-postmarketos-mediatek-mt6878-52363aeb26f934296b6b9a0797be62c1fc6cd3f5.tar.gz
 3bfb857e3584ace9d6794745a9bc1b3f61b990dc26ea6ca742444a926d779f3bc28795f74903642c49fb312928d880c7b4eab7f026379dcf6bf9386846cf8b60  config-postmarketos-mediatek-mt6878.aarch64
 "
