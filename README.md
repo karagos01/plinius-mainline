@@ -112,8 +112,6 @@ upstream is preserved); the default branch is set to `plinius` on both.
     hardware `Mic Capture Switch`, so it also silences the modem uplink, and
     the speaker button switches PulseAudio's voice call profile through a
     patched `callaudiod` (`postmarketos/callaudiod`). Left over:
-    - Screenshots fail on pmOS: phoc's image copy capture reports a 0x0
-      buffer, so `grim` and Phosh's screenshot both give up.
     - The microphone level during a call (hostless modem path) once seemed
       low; a test call on 2026-11-23 sounded fine. The mic preamp is at its
       maximum (24 dB) and `plinius-speechd` leaves the modem's speech

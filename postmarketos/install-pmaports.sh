@@ -10,6 +10,7 @@
 #   device/testing/plinius-modemd                     (modem userspace, ../modemd)
 #   device/testing/modemmanager-plugin-mtk-ccci       (+ ../mm-plugin-mtk-ccci)
 #   temp/callaudiod                                    (speaker button fix)
+#   temp/phosh                                         (screenshot fix)
 # Then build and install as usual, e.g.:
 #   pmbootstrap checksum linux-postmarketos-mediatek-mt6878
 #   pmbootstrap build linux-postmarketos-mediatek-mt6878
@@ -22,7 +23,7 @@ PMAPORTS=${1:-$(pmbootstrap config aports)}
 K=linux-postmarketos-mediatek-mt6878
 for p in device/testing/device-volla-plinius device/testing/$K \
 	device/testing/plinius-modemd device/testing/modemmanager-plugin-mtk-ccci \
-	temp/callaudiod; do
+	temp/callaudiod temp/phosh; do
 	rm -rf "${PMAPORTS:?}/$p"
 	mkdir -p "$PMAPORTS/$p"
 	cp -r "$HERE/$(basename "$p")/." "$PMAPORTS/$p/"

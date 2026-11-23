@@ -10,6 +10,7 @@ this directory keeps them in git so the image can be rebuilt.
 | `linux-postmarketos-mediatek-mt6878` | `device/testing/` | our kernel, built from `karagos01/linux` at a pinned commit with `configs/linux.config` |
 | `plinius-modemd` | `device/testing/` | modem userspace (`../modemd`, Rust) + OpenRC service, ordered before ModemManager |
 | `modemmanager-plugin-mtk-ccci` | `device/testing/` | ModemManager plugin for the data path (`../mm-plugin-mtk-ccci`), installed with ModemManager |
+| `phosh` | `temp/` | Alpine's Phosh with a fix for screenshots: one taken while the screen is off fails, and Phosh refused every later one until it restarted; to be sent upstream |
 | `callaudiod` | `temp/` | Alpine's `callaudiod` with a patch for the in-call speaker button: PulseAudio puts the earpiece and the speaker (same PCM) into separate voice call profiles, so the button has to switch profiles; to be sent upstream |
 
 With these, Phosh runs on our native MediaTek DRM driver and composites on
@@ -74,6 +75,9 @@ postmarketos/install-pmaports.sh          # copy the packages into pmaports
 pmbootstrap checksum linux-postmarketos-mediatek-mt6878 device-volla-plinius plinius-modemd
 pmbootstrap build linux-postmarketos-mediatek-mt6878 plinius-modemd device-volla-plinius
 pmbootstrap build --arch aarch64 callaudiod
+pmbootstrap config service_manager openrc  # see the quirks
+pmbootstrap build --force --arch aarch64 phosh
+pmbootstrap config -r service_manager
 pmbootstrap install --split               # UI e.g. phosh
 pmbootstrap export
 ```
@@ -88,6 +92,11 @@ running Linux, label `pmOS_root`); then stop U-Boot's countdown and
   build fails with "missing in checksums", checksum them one at a time.
 - `temp/` packages without `arch="aarch64"` build for the host unless
   `--arch aarch64` is given.
+- With the default service manager (systemd for Phosh), pmbootstrap
+  takes `phosh` from the systemd repository (version `99990.*`) instead
+  of `temp/phosh`, also for `checksum`. Our image runs OpenRC: set
+  `service_manager` to `openrc` for checksumming and building `phosh`,
+  and build with `--force`.
 - After updating pmaports, run `pmbootstrap zap` before building: build
   chroots from the older edge fail the cross builds (`cannot execute
   'cc1'`).

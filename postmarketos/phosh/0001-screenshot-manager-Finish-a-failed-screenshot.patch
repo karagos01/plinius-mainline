@@ -1,0 +1,43 @@
+From: Jan Benedikt <karagos01@gmail.com>
+Date: Mon, 23 Nov 2026 19:35:29 +0100
+Subject: [PATCH] screenshot-manager: Finish a failed screenshot
+
+When copying an output fails (phoc fails the copy while the output is
+off, for example), maybe_screencopy_done() completes the D-Bus call but
+never frees the frames. Every later screenshot is then refused as
+"already in progress" until phosh restarts. A failed screenshot from
+the keybinding also completes a NULL invocation.
+
+Finish it through screenshot_done() instead: it completes the D-Bus
+call or notifies about the failure, and frees the frames.
+---
+ src/screenshot-manager.c | 12 +++++++-----
+ 1 file changed, 7 insertions(+), 5 deletions(-)
+
+diff --git a/src/screenshot-manager.c b/src/screenshot-manager.c
+index 5f0e1e2..59d965a 100644
+--- a/src/screenshot-manager.c
++++ b/src/screenshot-manager.c
+@@ -823,12 +823,14 @@ maybe_screencopy_done (PhoshScreenshotManager *self)
+   if (done + failed != self->frames->num_outputs)
+     return;
+ 
+-  /* With a failure no need to merge pixbufs */
++  /*
++   * With a failure no need to merge pixbufs. Finish the screenshot
++   * so that the next one can start: there is no clipboard copy to
++   * wait for.
++   */
+   if (failed) {
+-    phosh_dbus_screenshot_complete_screenshot (PHOSH_DBUS_SCREENSHOT (self),
+-                                               self->frames->invocation,
+-                                               FALSE,
+-                                               self->frames->filename ?: "");
++    self->frames->copy_to_clipboard = FALSE;
++    screenshot_done (self, FALSE);
+     return;
+   }
+ 
+-- 
+2.43.0
+
