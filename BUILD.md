@@ -96,6 +96,12 @@ The rootfs contains:
 
 - kernel modules, WiFi NVRAM and modem NVRAM in `/var/lib/modem`,
 - network: usb0 172.16.42.1 with DHCP for the PC, wlan0 via DHCP,
+- WiFi power save with the firmware's low power mode (`iw ... power_save on`
+  from udev, `options mt7921_soc ps_mdtim=3`), `wlan-garp.service` (a
+  gratuitous ARP every minute, as the firmware drops broadcast ARP in low
+  power mode) and `wlan-watchdog.timer` (restarts `wpa_supplicant@wlan0` when
+  wlan0 stays down),
+- the hardware watchdog armed by systemd, SysRq off,
 - ssh for root and the `volla` user with the key `~/.ssh/id_ed25519.pub`
   (passwords are locked),
 - root autologin on `ttyGS0` (USB ACM); `ttyS0` (UART) only shows a login
@@ -164,12 +170,16 @@ Returning to stock: `fastboot flash boot_a backup/partitions/boot_a.img`
 - **New kernel onto the phone:** `scripts/update-debian.sh`. It builds the
   kernel, uploads the modules to the card over ssh, packs `out/boot-debian.img`,
   restarts the phone, stops U-Boot over UART and flashes `vendor_boot_b`.
+  A config change that alters the module layout (e.g. ftrace) needs the new
+  modules and the new boot image together; `update-debian.sh` does both.
 - **Test without flashing:** `scripts/dev-boot.sh [seconds] [log]` runs
   `fastboot boot out/boot-linux.img` (or `BOOTIMG=...`) and saves the serial
   console to `logs/`.
 - **New U-Boot:** `scripts/build.sh uboot`, then from U-Boot's fastboot
   `fastboot flash boot_a out/boot-uboot.img`. `fastboot boot` cannot launch a new
   U-Boot.
+- **postmarketOS:** packages and the pmbootstrap workflow are in
+  [`postmarketos/README.md`](postmarketos/README.md).
 - **FT232R** gets stuck after every phone reset: `scripts/uart-reset.sh`
   (calls sudo). U-Boot console: `scripts/ubcon.py`.
 

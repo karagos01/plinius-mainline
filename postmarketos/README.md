@@ -6,7 +6,7 @@ this directory keeps them in git so the image can be rebuilt.
 
 | Package | pmaports path | Contents |
 |---|---|---|
-| `device-volla-plinius` | `device/testing/` | `deviceinfo`, WiFi NVRAM, audio init (udev), sensor udev rule |
+| `device-volla-plinius` | `device/testing/` | `deviceinfo`, WiFi NVRAM, WiFi power save (`mt7921_soc ps_mdtim=3`, NetworkManager `wifi.powersave=3`, gratuitous ARP via a NetworkManager dispatcher), ALSA UCM profile, sensor udev rule, no automatic suspend on battery (gschema override) |
 | `linux-postmarketos-mediatek-mt6878` | `device/testing/` | our kernel, built from `karagos01/linux` at a pinned commit with `configs/linux.config` |
 | `plinius-modemd` | `device/testing/` | modem userspace (`../modemd`, Rust) + OpenRC service, ordered before ModemManager |
 | `modemmanager-plugin-mtk-ccci` | `device/testing/` | ModemManager plugin for the data path (`../mm-plugin-mtk-ccci`), installed with ModemManager |

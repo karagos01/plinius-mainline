@@ -38,18 +38,26 @@ upstream is preserved); the default branch is set to `plinius` on both.
 
 ## Roadmap
 
-- **Standby power.** The SoC now reaches its deep idle states at runtime: with
+- **Standby power.** The SoC reaches its deep idle states at runtime: with
   the display off the `system-vcore` cpuidle state lets SPM put the 26 MHz
   clock and VCORE to sleep (needs the APU host driver, the UFS rtff-mtcmos,
-  the mtu3/SD/I2C context restore and the LVTS fixes). Measured unplugged on
-  Debian (2026-11-20): ~53 mA idle with the display off, down from ~143 mA.
-  Incoming calls and SMS still wake the phone (SMS needs `AT+CNMI=2,1`).
-  The MT6375 fuel gauge reads about twice the stock SH366100 gauge (stock
-  idle shows 38-41 mA on the same counter), so absolute numbers need
-  calibration. Open items:
-  - 26M/VCORE sleep does not happen while WiFi is associated (WiFi power
-    save, multicast filtering, DTIM).
-  - Calibrate the MT6375 current counter; long unplugged soak test.
+  the mtu3/SD/I2C context restore and the LVTS fixes). WiFi stays associated
+  in power save with the firmware's low power mode (`mt7921_soc
+  ps_mdtim=3`, NetworkManager `wifi.powersave=3`), and a gratuitous ARP every
+  minute keeps the router finding the phone, since the firmware drops
+  broadcast ARP in that mode. The WFDMA is reinitialised on every wake; the
+  DMA is stopped and drained first, so the reinit neither wedges the link nor
+  drops the frames received before it. Measured unplugged with the display
+  off and WiFi associated: Debian ~41 mA (21.6 h), postmarketOS at the
+  greeter ~38 mA (6.6 h overnight), down from ~143 mA at the start
+  (~149 mA with WiFi power save off). Incoming calls and SMS still wake the
+  phone (SMS needs `AT+CNMI=2,1`). The MT6375 fuel gauge reads about twice
+  the stock SH366100 gauge (stock idle shows 38-41 mA on the same counter),
+  so absolute numbers need calibration. Open items:
+  - Calibrate the MT6375 current counter.
+  - On Debian, two of ~30 boots so far had WiFi authentication time out after
+    boot; not reproduced on purpose, a diagnostic hook in the watchdog waits
+    for it.
 
 - **System suspend (s2idle) — parked.** Investigated on pmOS (2026-11-20).
   `s2idle` itself works: the power key and the RTC wake it and Phosh survives
@@ -90,7 +98,10 @@ upstream is preserved); the default branch is set to `plinius` on both.
   (after the dither and gamma fixes), WiFi scanning in NetworkManager, Bluetooth,
   battery in upower, the sound card, the accelerometer, the ambient light
   sensor and the proximity sensor (through iio-sensor-proxy) all work, and
-  Phosh composites on the GPU. The packages (device, kernel, modem) live in
+  Phosh composites on the GPU. It runs on current edge (pmaports and packages
+  updated 2026-11-23, Phosh 0.59, Mesa 26.3.1 from Alpine), and the kernel
+  config passes `pmbootstrap kconfig check` (community, including Binder for
+  Waydroid and ftrace). The packages (device, kernel, modem) live in
   [`postmarketos/`](postmarketos/README.md). Open items:
   - **Calls: loose ends.** Incoming and outgoing voice calls work in Phosh
     (GNOME Calls over ModemManager: MIPC call approval in the `mtk-ccci`
@@ -100,9 +111,9 @@ upstream is preserved); the default branch is set to `plinius` on both.
     - GNOME Calls once disappeared when a call was accepted, after several
       ModemManager restarts during testing; not reproduced since. Watch for
       it.
-  - **Verify WiFi and audio in the session.** Connect to WiFi through
-    NetworkManager and play sound through PipeWire inside a logged-in Phosh
-    session.
+  - **Verify audio in the session.** Play sound through PipeWire inside a
+    logged-in Phosh session (WiFi through NetworkManager works).
+  - **Waydroid.** The kernel has Binder now; Waydroid itself is untested.
   - **Compass.** iio-sensor-proxy does not pick up the magnetometer (it expects
     a tilt-compensated heading channel); low priority.
 
