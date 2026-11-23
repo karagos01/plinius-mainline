@@ -1,0 +1,10 @@
+/*
+ * Make the in-call mute and speaker buttons (Phosh's call display, from
+ * libcall-ui) show when they are on: GTK3 Adwaita only shades a checked
+ * button slightly, which is close to invisible on the dark lock screen.
+ * Installed as the user GTK3 stylesheet from /etc/skel.
+ */
+cui-call-display button:checked {
+	background-color: @theme_selected_bg_color;
+	color: @theme_selected_fg_color;
+}

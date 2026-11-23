@@ -1,0 +1,205 @@
+From: Jan Benedikt <karagos01@gmail.com>
+Date: Mon, 23 Nov 2026 19:02:37 +0100
+Subject: [PATCH] pulse: switch the voice call profile for the speaker
+
+PulseAudio 16 and later never put two UCM devices sharing a PlaybackPCM
+into the same profile. On cards where the speaker and the earpiece use
+the same PCM, each voice call profile then has a sink with only one of
+the two ports, and enabling the speaker fails because the speaker port
+is not on the current sink.
+
+During a call, when the wanted output is not a port of the current
+sink, switch to the available voice call profile that has it instead.
+The speaker reset when a call ends does not do this, as it would race
+with the switch to the default profile.
+---
+ src/cad-pulse.c | 118 ++++++++++++++++++++++++++++++++++++++++++++++--
+ 1 file changed, 113 insertions(+), 5 deletions(-)
+
+diff --git a/src/cad-pulse.c b/src/cad-pulse.c
+index ba6f624..bb05207 100644
+--- a/src/cad-pulse.c
++++ b/src/cad-pulse.c
+@@ -61,9 +61,13 @@ typedef struct _CadPulseOperation {
+     CadPulse *pulse;
+     CadOperation *op;
+     guint value;
++    /* Whether enabling or disabling the speaker may switch profiles */
++    gboolean switch_profile;
+ } CadPulseOperation;
+ 
+ static void pulseaudio_cleanup(CadPulse *self);
++static void enable_speaker(gboolean enable, gboolean switch_profile,
++                           CadOperation *cad_op);
+ static gboolean pulseaudio_connect(CadPulse *self);
+ static gboolean init_pulseaudio_objects(gpointer data);
+ 
+@@ -912,6 +916,84 @@ static void set_card_profile(pa_context *ctx, const pa_card_info *info, int eol,
+     }
+ }
+ 
++static gboolean is_earpiece_port_type(int type)
++{
++    return type == PA_DEVICE_PORT_TYPE_EARPIECE ||
++           type == PA_DEVICE_PORT_TYPE_HANDSET ||
++           type == PA_DEVICE_PORT_TYPE_HEADPHONES;
++}
++
++/*
++ * The UCM support of PulseAudio 16+ never puts two devices sharing a
++ * PlaybackPCM in the same profile, so on cards where the speaker and the
++ * earpiece use the same PCM each voice call profile has a sink with only one
++ * of them, and switching between them means switching profiles.
++ */
++static void set_output_profile(pa_context *ctx, const pa_card_info *info, int eol, void *data)
++{
++    CadPulseOperation *operation = data;
++    pa_card_profile_info2 *target = NULL;
++    pa_operation *op = NULL;
++    gboolean want_speaker;
++
++    if (eol != 0)
++        return;
++
++    if (!info) {
++        g_critical("PA returned no card info (eol=%d)", eol);
++        return;
++    }
++
++    if (info->index != operation->pulse->card_id)
++        return;
++
++    want_speaker = operation->value != 0;
++
++    for (guint i = 0; i < info->n_ports; i++) {
++        pa_card_port_info *port = info->ports[i];
++
++        if (port->direction != PA_DIRECTION_OUTPUT ||
++            port->available == PA_PORT_AVAILABLE_NO)
++            continue;
++
++        if (want_speaker ? port->type != PA_DEVICE_PORT_TYPE_SPEAKER
++                         : !is_earpiece_port_type(port->type))
++            continue;
++
++        for (guint j = 0; j < port->n_profiles; j++) {
++            pa_card_profile_info2 *profile = port->profiles2[j];
++
++            if (profile->available &&
++                g_str_has_prefix(profile->name, SND_USE_CASE_VERB_VOICECALL) &&
++                (!target || profile->priority > target->priority))
++                target = profile;
++        }
++    }
++
++    if (target && g_strcmp0(target->name, info->active_profile2->name) != 0) {
++        g_debug("switching to profile '%s'", target->name);
++        op = pa_context_set_card_profile_by_index(ctx, operation->pulse->card_id,
++                                                  target->name,
++                                                  operation_complete_cb, operation);
++    }
++
++    if (op) {
++        pa_operation_unref(op);
++    } else {
++        g_debug("%s: no voice call profile with the wanted output", __func__);
++        operation_complete_cb(ctx, target != NULL, operation);
++    }
++}
++
++static gboolean sink_has_port(const pa_sink_info *sink, const gchar *name)
++{
++    for (guint i = 0; i < sink->n_ports; i++)
++        if (g_strcmp0(sink->ports[i]->name, name) == 0)
++            return TRUE;
++
++    return FALSE;
++}
++
+ static void set_output_port(pa_context *ctx, const pa_sink_info *info, int eol, void *data)
+ {
+     CadPulseOperation *operation = data;
+@@ -952,6 +1034,21 @@ static void set_output_port(pa_context *ctx, const pa_sink_info *info, int eol,
+             target_port = operation->pulse->speaker_port;
+         else
+             target_port = get_available_sink_port(info, operation->pulse->speaker_port);
++
++        /*
++         * During a call, the wanted output may be on the sink of another
++         * voice call profile.
++         */
++        if ((!target_port || !sink_has_port(info, target_port)) &&
++            operation->switch_profile &&
++            operation->pulse->audio_mode == CALL_AUDIO_MODE_CALL) {
++            op = pa_context_get_card_info_by_index(ctx, operation->pulse->card_id,
++                                                   set_output_profile, operation);
++            if (op) {
++                pa_operation_unref(op);
++                return;
++            }
++        }
+     }
+ 
+     g_debug("active port is '%s', target port is '%s'", info->active_port->name, target_port);
+@@ -979,7 +1076,7 @@ static void set_output_port(pa_context *ctx, const pa_sink_info *info, int eol,
+  */
+ void cad_pulse_select_mode(CallAudioMode mode, CadOperation *cad_op)
+ {
+-    CadPulseOperation *operation = g_new(CadPulseOperation, 1);
++    CadPulseOperation *operation = g_new0(CadPulseOperation, 1);
+     pa_operation *op = NULL;
+ 
+     if (!cad_op) {
+@@ -1013,7 +1110,11 @@ void cad_pulse_select_mode(CallAudioMode mode, CadOperation *cad_op)
+             CadOperation *disable_speaker_op = g_new0(CadOperation, 1);
+             disable_speaker_op->type = CAD_OPERATION_ENABLE_SPEAKER;
+ 
+-            cad_pulse_enable_speaker(FALSE, disable_speaker_op);
++            /*
++             * Don't switch profiles for this: the switch to the default
++             * profile below would race with it.
++             */
++            enable_speaker(FALSE, FALSE, disable_speaker_op);
+         }
+     }
+ 
+@@ -1052,9 +1153,10 @@ error:
+         free(operation);
+ }
+ 
+-void cad_pulse_enable_speaker(gboolean enable, CadOperation *cad_op)
++static void enable_speaker(gboolean enable, gboolean switch_profile,
++                           CadOperation *cad_op)
+ {
+-    CadPulseOperation *operation = g_new(CadPulseOperation, 1);
++    CadPulseOperation *operation = g_new0(CadPulseOperation, 1);
+     pa_operation *op = NULL;
+ 
+     if (!cad_op) {
+@@ -1076,6 +1178,7 @@ void cad_pulse_enable_speaker(gboolean enable, CadOperation *cad_op)
+ 
+     operation->op = cad_op;
+     operation->value = (guint)enable;
++    operation->switch_profile = switch_profile;
+ 
+     op = pa_context_get_sink_info_by_index(operation->pulse->ctx,
+                                            operation->pulse->sink_id,
+@@ -1095,9 +1198,14 @@ error:
+         free(operation);
+ }
+ 
++void cad_pulse_enable_speaker(gboolean enable, CadOperation *cad_op)
++{
++    enable_speaker(enable, TRUE, cad_op);
++}
++
+ void cad_pulse_mute_mic(gboolean mute, CadOperation *cad_op)
+ {
+-    CadPulseOperation *operation = g_new(CadPulseOperation, 1);
++    CadPulseOperation *operation = g_new0(CadPulseOperation, 1);
+     pa_operation *op = NULL;
+ 
+     if (!cad_op) {
+-- 
+2.43.0
+

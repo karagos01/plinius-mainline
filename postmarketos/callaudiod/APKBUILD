@@ -1,0 +1,48 @@
+# Alpine's callaudiod with a fix for the speaker button on cards whose
+# speaker and earpiece share a PCM (see the patch); drop it once upstream
+# has it.
+# Contributor: TimotheeLF <timotheel-f@protonmail.com>
+# Maintainer: TimotheeLF <timotheel-f@protonmail.com>
+pkgname=callaudiod
+pkgver=0.1.99
+pkgrel=1
+pkgdesc="Call audio routing daemon"
+url="https://gitlab.com/mobian1/callaudiod"
+arch="all"
+license="GPL-3.0-or-later"
+makedepends="meson alsa-lib-dev appstream-dev glib-dev pulseaudio-dev"
+subpackages="
+	$pkgname-dev
+	$pkgname-libs
+	callaudiocli
+	"
+source="https://gitlab.com/mobian1/callaudiod/-/archive/$pkgver/callaudiod-$pkgver.tar.gz
+	0001-pulse-switch-the-voice-call-profile-for-the-speaker.patch
+	"
+
+build() {
+	abuild-meson -Db_lto=true . output
+	meson compile -C output
+}
+
+check() {
+	meson test --print-errorlogs -C output
+}
+
+package() {
+	depends="callaudiocli=$pkgver-r$pkgrel"
+	provider_priority=100
+
+	DESTDIR="$pkgdir" meson install --no-rebuild -C output
+}
+
+callaudiocli() {
+	pkgdesc="CLI for callaudiod"
+
+	amove usr/bin/callaudiocli
+}
+
+sha512sums="
+8243189cae4ea2d37f7773eaaf1f66b80357ca2803adcaed3eb57f57fce80c13e0667f1be7bac00256318f2cc2f790c388f1d56496d22f34377c4d6a0b43e5c0  callaudiod-0.1.99.tar.gz
+c016ad03576b5598d1c816abb54689d56f79f5ba1ef23ade9f8c77c662d37fd4d9185d913512f64e6e86e340960860c938b3756dbbacf8f181a2e307c7b8309d  0001-pulse-switch-the-voice-call-profile-for-the-speaker.patch
+"

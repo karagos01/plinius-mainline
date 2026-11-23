@@ -6,10 +6,11 @@ this directory keeps them in git so the image can be rebuilt.
 
 | Package | pmaports path | Contents |
 |---|---|---|
-| `device-volla-plinius` | `device/testing/` | `deviceinfo`, WiFi NVRAM, WiFi power save (`mt7921_soc ps_mdtim=3`, NetworkManager `wifi.powersave=3`, gratuitous ARP via a NetworkManager dispatcher), ALSA UCM profile, sensor udev rule, no automatic suspend on battery (gschema override) |
+| `device-volla-plinius` | `device/testing/` | `deviceinfo`, WiFi NVRAM, WiFi power save (`mt7921_soc ps_mdtim=3`, NetworkManager `wifi.powersave=3`, gratuitous ARP via a NetworkManager dispatcher), ALSA UCM profile, sensor udev rule, no automatic suspend on battery (gschema override), visible state of the in-call buttons (`/etc/skel` GTK3 stylesheet) |
 | `linux-postmarketos-mediatek-mt6878` | `device/testing/` | our kernel, built from `karagos01/linux` at a pinned commit with `configs/linux.config` |
 | `plinius-modemd` | `device/testing/` | modem userspace (`../modemd`, Rust) + OpenRC service, ordered before ModemManager |
 | `modemmanager-plugin-mtk-ccci` | `device/testing/` | ModemManager plugin for the data path (`../mm-plugin-mtk-ccci`), installed with ModemManager |
+| `callaudiod` | `temp/` | Alpine's `callaudiod` with a patch for the in-call speaker button: PulseAudio puts the earpiece and the speaker (same PCM) into separate voice call profiles, so the button has to switch profiles; to be sent upstream |
 
 With these, Phosh runs on our native MediaTek DRM driver and composites on
 the GPU; touch, WiFi, Bluetooth, battery, sound, the accelerometer, the
@@ -72,6 +73,7 @@ the working tree instead (run `cargo clean` there first).
 postmarketos/install-pmaports.sh          # copy the packages into pmaports
 pmbootstrap checksum linux-postmarketos-mediatek-mt6878 device-volla-plinius plinius-modemd
 pmbootstrap build linux-postmarketos-mediatek-mt6878 plinius-modemd device-volla-plinius
+pmbootstrap build --arch aarch64 callaudiod
 pmbootstrap install --split               # UI e.g. phosh
 pmbootstrap export
 ```
@@ -82,6 +84,10 @@ running Linux, label `pmOS_root`); then stop U-Boot's countdown and
 
 ## pmbootstrap quirks
 
+- `pmbootstrap checksum` with several packages may skip some: if a
+  build fails with "missing in checksums", checksum them one at a time.
+- `temp/` packages without `arch="aarch64"` build for the host unless
+  `--arch aarch64` is given.
 - After updating pmaports, run `pmbootstrap zap` before building: build
   chroots from the older edge fail the cross builds (`cannot execute
   'cc1'`).
