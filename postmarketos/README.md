@@ -10,7 +10,6 @@ this directory keeps them in git so the image can be rebuilt.
 | `linux-postmarketos-mediatek-mt6878` | `device/testing/` | our kernel, built from `karagos01/linux` at a pinned commit with `configs/linux.config` |
 | `plinius-modemd` | `device/testing/` | modem userspace (`../modemd`, Rust) + OpenRC service, ordered before ModemManager |
 | `modemmanager-plugin-mtk-ccci` | `device/testing/` | ModemManager plugin for the data path (`../mm-plugin-mtk-ccci`), installed with ModemManager |
-| `mesa` | `temp/` | Mesa 26.3.0 with Mali-G615 support; drop once Alpine has ≥ 26.3 |
 
 With these, Phosh runs on our native MediaTek DRM driver and composites on
 the GPU; touch, WiFi, Bluetooth, battery, sound, the accelerometer, the
@@ -72,7 +71,7 @@ the working tree instead (run `cargo clean` there first).
 ```sh
 postmarketos/install-pmaports.sh          # copy the packages into pmaports
 pmbootstrap checksum linux-postmarketos-mediatek-mt6878 device-volla-plinius plinius-modemd
-pmbootstrap build mesa linux-postmarketos-mediatek-mt6878 plinius-modemd device-volla-plinius
+pmbootstrap build linux-postmarketos-mediatek-mt6878 plinius-modemd device-volla-plinius
 pmbootstrap install --split               # UI e.g. phosh
 pmbootstrap export
 ```
@@ -83,9 +82,12 @@ running Linux, label `pmOS_root`); then stop U-Boot's countdown and
 
 ## pmbootstrap quirks
 
-- Some pmbootstrap versions reject pmaports' `deviceinfo_schema.toml`
-  (`header_version` has an integer interval but no `datatype = "integer"`);
-  add the datatype line locally.
+- After updating pmaports, run `pmbootstrap zap` before building: build
+  chroots from the older edge fail the cross builds (`cannot execute
+  'cc1'`).
+- On the phone, update with `apk upgrade`, not `apk upgrade -a`: the
+  pmOS repository has an older `linux-postmarketos-mediatek-mt6878`
+  (`7.2`, the upstream fork), and `-a` "downgrades" to it.
 - `plinius-modemd` builds in QEMU (`!pmb:crossdirect`), and pmbootstrap
   3.12 still points `RUSTC_WRAPPER` at sccache there, which the build
   chroot does not have: build it with `pmbootstrap --no-ccache build

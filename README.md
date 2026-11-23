@@ -34,7 +34,7 @@ upstream is preserved); the default branch is set to `plinius` on both.
 | Mobile data | ✅ | LTE, NetAgent EIF (`mobile-data.py`) |
 | SMS | ✅ | receive and send (`sms.py`) |
 | Bluetooth BR/EDR + LE | ✅ | custom `btmtk_connsys` driver (BGF subsystem, BEIF EMI-ring, WMT); scan, pairing, A2DP audio, IRQ-driven RX |
-| GPU (Mali-G615 MC2) | ✅ | panthor on the GPUEB power controller (`mtk-mfg-pmdomain`); OpenGL ES 3.1 with Mesa ≥ 26.3 (packaged in `postmarketos/mesa`), devfreq 265 MHz–1.047 GHz, thermal throttling at 85 °C; Phosh composites on the GPU |
+| GPU (Mali-G615 MC2) | ✅ | panthor on the GPUEB power controller (`mtk-mfg-pmdomain`); OpenGL ES 3.1 with Mesa ≥ 26.3 (in Alpine edge), devfreq 265 MHz–1.047 GHz, thermal throttling at 85 °C; Phosh composites on the GPU |
 
 ## Roadmap
 
@@ -90,7 +90,7 @@ upstream is preserved); the default branch is set to `plinius` on both.
   (after the dither and gamma fixes), WiFi scanning in NetworkManager, Bluetooth,
   battery in upower, the sound card, the accelerometer, the ambient light
   sensor and the proximity sensor (through iio-sensor-proxy) all work, and
-  Phosh composites on the GPU. The packages (device, kernel, Mesa) live in
+  Phosh composites on the GPU. The packages (device, kernel, modem) live in
   [`postmarketos/`](postmarketos/README.md). Open items:
   - **Calls: loose ends.** Incoming and outgoing voice calls work in Phosh
     (GNOME Calls over ModemManager: MIPC call approval in the `mtk-ccci`
