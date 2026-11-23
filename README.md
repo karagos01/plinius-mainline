@@ -94,26 +94,28 @@ upstream is preserved); the default branch is set to `plinius` on both.
     looks like a reboot.
 
 - **postmarketOS / Phosh.** A pmOS image built with `pmbootstrap` from our
-  kernel and `device-volla-plinius` packages boots into Phosh
-  (greetd + phrog + phoc on the native MediaTek DRM driver). Login, touch, colours
-  (after the dither and gamma fixes), WiFi scanning in NetworkManager, Bluetooth,
-  battery in upower, the sound card, the accelerometer, the ambient light
-  sensor and the proximity sensor (through iio-sensor-proxy) all work, and
-  Phosh composites on the GPU. It runs on current edge (pmaports and packages
-  updated 2026-11-23, Phosh 0.59, Mesa 26.3.1 from Alpine), and the kernel
-  config passes `pmbootstrap kconfig check` (community, including Binder for
-  Waydroid and ftrace). The packages (device, kernel, modem) live in
-  [`postmarketos/`](postmarketos/README.md). Open items:
+  kernel and `device-volla-plinius` packages boots into Phosh (greetd + phrog
+  + phoc on the native MediaTek DRM driver). Login, touch, colours (after the
+  dither and gamma fixes), WiFi scanning in NetworkManager, Bluetooth, battery
+  in upower, sound in the session (PulseAudio with the UCM profile: speaker,
+  earpiece and microphone, verified 2026-11-23), the accelerometer, the
+  ambient light sensor and the proximity sensor (through iio-sensor-proxy) all
+  work, and Phosh composites on the GPU. It runs on current edge (pmaports and
+  packages updated 2026-11-23, Phosh 0.59, Mesa 26.3.1 from Alpine), and the
+  kernel config passes `pmbootstrap kconfig check` (community, including
+  Binder for Waydroid and ftrace). The packages (device, kernel, modem) live
+  in [`postmarketos/`](postmarketos/README.md). Open items:
   - **Calls: loose ends.** Incoming and outgoing voice calls work in Phosh
     (GNOME Calls over ModemManager: MIPC call approval in the `mtk-ccci`
     plugin, call audio through UCM and `plinius-speechd`). Left over:
-    - The microphone level during a call (hostless modem path) is low;
-      tune the uplink gain.
+    - The microphone level during a call (hostless modem path) once seemed
+      low; a test call on 2026-11-23 sounded fine. The mic preamp is at its
+      maximum (24 dB) and `plinius-speechd` leaves the modem's speech
+      parameters at their defaults, so if it is too quiet after all, the
+      next step is the modem's uplink digital gain.
     - GNOME Calls once disappeared when a call was accepted, after several
       ModemManager restarts during testing; not reproduced since. Watch for
       it.
-  - **Verify audio in the session.** Play sound through PipeWire inside a
-    logged-in Phosh session (WiFi through NetworkManager works).
   - **Waydroid.** The kernel has Binder now; Waydroid itself is untested.
   - **Compass.** iio-sensor-proxy does not pick up the magnetometer (it expects
     a tilt-compensated heading channel); low priority.
