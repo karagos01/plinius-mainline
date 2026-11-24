@@ -120,8 +120,9 @@ upstream is preserved); the default branch is set to `plinius` on both.
     - GNOME Calls once disappeared when a call was accepted, after several
       ModemManager restarts during testing; not reproduced since. Watch for
       it.
-  - **Waydroid.** Works with software rendering (2026-11-23); the GPU
-    needs a Waydroid vendor image with Mesa 26.3 or later. Setup in
+  - **Waydroid.** Works with GPU rendering (2026-11-24) using Mesa 26.3
+    built with the Android NDK as an overlay of the vendor image (whose
+    Mesa 26.0 does not know the Mali-G615). Setup in
     [`postmarketos/README.md`](postmarketos/README.md#waydroid).
   - **Compass.** iio-sensor-proxy does not pick up the magnetometer (it expects
     a tilt-compensated heading channel); low priority.

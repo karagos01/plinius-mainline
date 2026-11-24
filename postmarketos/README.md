@@ -88,13 +88,25 @@ running Linux, label `pmOS_root`); then stop U-Boot's countdown and
 
 ## Waydroid
 
-Waydroid runs (tested 2026-11-23: LineageOS 20 / Android 13 images,
-boots in about 30 s, touch and network work), but only with software
-rendering, so it is somewhat slow. The newest Waydroid vendor image
-(2026-10-22) has Mesa 26.0.8, which does not know the Mali-G615 (arch
-11, supported since Mesa 26.3): with the default `gbm`/`mesa` setup
-gralloc cannot allocate a single buffer and Android never finishes
-booting. Setup on the phone, as root:
+Waydroid runs with GPU rendering (tested 2026-11-24: LineageOS 20 /
+Android 13 images, SurfaceFlinger on "Mali-G615 MC2 (Panfrost)", touch
+and network work). The newest Waydroid vendor image (2026-10-22) has
+Mesa 26.0.8, which does not know the Mali-G615 (arch 11, supported since
+Mesa 26.3): gralloc cannot allocate a single buffer and Android never
+finishes booting. `waydroid-mesa.sh` builds Mesa 26.3 with the Android
+NDK and packs its 64-bit libraries (EGL/GLES, GBM, panfrost Vulkan) as
+an overlay of `/vendor/lib64`; the vendor image itself stays untouched.
+32-bit apps still get the vendor's old Mesa from `/vendor/lib`.
+
+On the PC (needs the host packages listed in the script; downloads the
+NDK and Mesa into `../work/waydroid-mesa`, next to this repository):
+
+```sh
+postmarketos/waydroid-mesa.sh
+scp ../work/waydroid-mesa/waydroid-mesa-overlay.tar.gz user@172.16.42.1:/tmp/
+```
+
+Setup on the phone, as root:
 
 ```sh
 apk add waydroid waydroid-nftrules
@@ -102,20 +114,23 @@ apk add waydroid waydroid-nftrules
 ln -s /usr/share/nftables.avail/51_waydroid.nft /etc/nftables.d/
 rc-service nftables reload
 waydroid init
-# software rendering, until a vendor image has Mesa >= 26.3
-sed -i '/^\[properties\]/a ro.hardware.gralloc = default\nro.hardware.egl = swiftshader' \
+tar -C /var/lib/waydroid/overlay -xzf /tmp/waydroid-mesa-overlay.tar.gz
+# minigbm gralloc on top of the overlay's GBM, Mesa EGL
+sed -i '/^\[properties\]/a ro.hardware.gralloc = minigbm_gbm_mesa\nro.hardware.egl = mesa' \
 	/var/lib/waydroid/waydroid.cfg
 waydroid upgrade --offline
 rc-service waydroid-container start
 rc-update add waydroid-container default   # optional: at every boot
 ```
 
+Without the overlay, software rendering works instead: set the two
+properties to `default` and `swiftshader`.
+
 Then, as the user in the Phosh session: `waydroid session start` and
 `waydroid show-full-ui` (or the Waydroid launcher). A running session
 keeps Android awake; stop it with `waydroid session stop` before
-standby. To try the GPU once
-a newer vendor image is out, remove the two properties and run
-`waydroid upgrade` again.
+standby. Once a vendor image ships Mesa 26.3 or later, the overlay can
+be removed (`rm -r /var/lib/waydroid/overlay/vendor/lib64`).
 
 ## pmbootstrap quirks
 
