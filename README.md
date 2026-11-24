@@ -124,8 +124,11 @@ upstream is preserved); the default branch is set to `plinius` on both.
     built with the Android NDK as an overlay of the vendor image (whose
     Mesa 26.0 does not know the Mali-G615). Setup in
     [`postmarketos/README.md`](postmarketos/README.md#waydroid).
-  - **Compass.** iio-sensor-proxy does not pick up the magnetometer (it expects
-    a tilt-compensated heading channel); low priority.
+  - **Compass.** iio-sensor-proxy reports a heading (2026-11-24): the
+    azimuth of the SCP's fused orientation, exposed as the
+    tilt-compensated heading channel it looks for. Not checked against a
+    reference direction and not calibrated (the magnetometer needs a
+    figure-eight motion); nothing in Phosh shows it, geoclue may use it.
 
 - **New userspace tools in Rust.** Kernel drivers stay in C: they mostly extend
   existing C drivers (mtk-drm, mt76, ASoC, TCPM), and the subsystems we need
