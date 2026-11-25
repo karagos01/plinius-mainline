@@ -1,0 +1,52 @@
+From: Jan Benedikt <karagos01@gmail.com>
+Subject: [PATCH] egl/dri2: fail eglExportDMABUFImageMESA when the fd export fails
+
+dri2_export_dma_buf_image_mesa() ignores the result of the
+__DRI_IMAGE_ATTRIB_FD query and returns EGL_TRUE even when the driver
+could not export the image, leaving the caller's fds[] untouched. GTK
+then builds a dmabuf texture from that garbage value.
+
+This happens with panfrost on panthor, which cannot export a BO that is
+private to its VM (the kernel returns -EINVAL from drmPrimeHandleToFD).
+GTK's GL renderer exports textures from gsk_renderer_render_texture()
+this way, so GNOME Snapshot ends up with a broken GL context and
+crashes after a few shutter animations.
+
+Report EGL_BAD_ALLOC instead, closing any fds already exported, so
+callers fall back to their non-dmabuf path.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Signed-off-by: Jan Benedikt <karagos01@gmail.com>
+---
+--- a/src/egl/drivers/dri2/egl_dri2.c
++++ b/src/egl/drivers/dri2/egl_dri2.c
+@@ -2605,10 +2605,26 @@
+           *    "If the number of fds is less than the number of planes, then
+           *    subsequent fd slots should contain -1."
+           */
+-         if (i == 0 || is_disjoint)
+-            dri2_query_image(image, __DRI_IMAGE_ATTRIB_FD, &fds[i]);
+-         else
++         if (i == 0 || is_disjoint) {
++            /* The driver may be unable to export the image, e.g. panfrost
++             * on panthor cannot export a BO private to its VM. Fail instead
++             * of handing back whatever the caller had in fds[i].
++             */
++            if (!dri2_query_image(image, __DRI_IMAGE_ATTRIB_FD, &fds[i])) {
++               fds[i] = -1;
++               if (i)
++                  dri2_destroy_image(image);
++               for (int j = 0; j < i; j++) {
++                  if (fds[j] >= 0)
++                     close(fds[j]);
++                  fds[j] = -1;
++               }
++               mtx_unlock(&dri2_dpy->lock);
++               return _eglError(EGL_BAD_ALLOC, "eglExportDMABUFImageMESA");
++            }
++         } else {
+             fds[i] = -1;
++         }
+       }
+ 
+       if (strides && !dri2_query_image(image, __DRI_IMAGE_ATTRIB_STRIDE, &strides[i]))
