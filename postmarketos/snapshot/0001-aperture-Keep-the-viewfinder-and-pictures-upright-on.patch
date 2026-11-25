@@ -1,0 +1,295 @@
+From 2658d0b22f99fd3b1d2f1654af2d51cdce882ae1 Mon Sep 17 00:00:00 2001
+From: Jan Benedikt <karagos01@gmail.com>
+Date: Wed, 25 Nov 2026 19:00:12 +0100
+Subject: [PATCH] aperture: Keep the viewfinder and pictures upright on a
+ rotated display
+
+A built-in camera turns together with the display, so the stream
+orientation (from the image-orientation tag) is only right while the
+display is in its natural orientation. On a phone in landscape the
+compositor rotates the output by 90 degrees, so the preview ends up
+sideways and pictures are stored as if the phone was held upright.
+
+Follow the rotation of the built-in display through the DisplayConfig
+D-Bus interface that GNOME Shell and Phosh provide, and combine it with
+the stream orientation for front and back cameras (the scene turns the
+opposite way for a camera facing the user, as on Android): in the
+viewfinder by
+overriding the orientation of the gtk4paintablesink paintable, and in
+pictures through the image-orientation tag. Without the interface, or
+for external cameras, the stream orientation is used as before.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Signed-off-by: Jan Benedikt <karagos01@gmail.com>
+---
+ aperture/src/viewfinder.rs | 214 +++++++++++++++++++++++++++++++++++++
+ 1 file changed, 214 insertions(+)
+
+diff --git a/aperture/src/viewfinder.rs b/aperture/src/viewfinder.rs
+index 7209cb5..740a7ca 100644
+--- a/aperture/src/viewfinder.rs
++++ b/aperture/src/viewfinder.rs
+@@ -19,6 +19,9 @@ use crate::code_detector::QrCodeDetector;
+ const DEFAULT_BITRATE: u32 = 2048;
+ const PROVIDER_TIMEOUT: u64 = 2;
+ 
++const DISPLAY_CONFIG: &str = "org.gnome.Mutter.DisplayConfig";
++const DISPLAY_CONFIG_PATH: &str = "/org/gnome/Mutter/DisplayConfig";
++
+ #[derive(Debug)]
+ enum StateChangeState {
+     Equal,
+@@ -70,6 +73,14 @@ mod imp {
+ 
+         pub timeout_handler: RefCell<Option<glib::SourceId>>,
+ 
++        /// Orientation of the stream from its `image-orientation` tag, as
++        /// clockwise degrees and whether it is flipped.
++        pub stream_orientation: Cell<Option<(u32, bool)>>,
++        /// Clockwise rotation the compositor applies to the built-in display.
++        pub display_rotation: Cell<u32>,
++        pub display_config: OnceCell<gio::DBusConnection>,
++        pub display_subscription: RefCell<Option<gio::SignalSubscription>>,
++
+         pub picture: gtk::Picture,
+         pub offload: gtk::GraphicsOffload,
+     }
+@@ -79,6 +90,123 @@ mod imp {
+             self.camerabin.get().unwrap()
+         }
+ 
++        /// Keeps the viewfinder upright when the display is rotated.
++        ///
++        /// A built-in camera turns together with the display, so the stream
++        /// orientation only holds while the display is in its natural
++        /// orientation. Once the compositor rotates the output, the frames
++        /// have to be rotated by the same amount on top of it.
++        pub(super) fn update_orientation(&self) {
++            let Some(sink) = self.sink_paintable.get() else {
++                return;
++            };
++            let paintable = sink.property::<gdk::Paintable>("paintable");
++
++            let orientation = match self.display_orientation() {
++                Some((rotation, flip)) if self.display_rotation.get() != 0 => {
++                    format!("{}rotate{rotation}", if flip { "flip-" } else { "" })
++                }
++                _ => String::from("auto"),
++            };
++
++            log::debug!(
++                "Viewfinder orientation: {orientation} (display rotated by {})",
++                self.display_rotation.get()
++            );
++            paintable.set_property_from_str("orientation", &orientation);
++        }
++
++        /// The orientation that shows the frames upright on the display as it
++        /// is rotated now, as clockwise degrees and whether it is flipped.
++        ///
++        /// `None` when the stream orientation is all there is to it: for
++        /// external cameras, which do not turn with the display.
++        pub(super) fn display_orientation(&self) -> Option<(u32, bool)> {
++            let front = match self.camera.borrow().as_ref().map(|camera| camera.location()) {
++                Some(crate::CameraLocation::Front) => true,
++                Some(crate::CameraLocation::Back) => false,
++                _ => return None,
++            };
++
++            // Turning the phone turns the scene the opposite way for a camera
++            // that faces the user, and a flipped stream swaps that once more.
++            let display = self.display_rotation.get();
++            let (rotation, flip) = self.stream_orientation.get().unwrap_or((0, false));
++            let rotation = if front == flip {
++                (rotation + display) % 360
++            } else {
++                (rotation + 360 - display) % 360
++            };
++            Some((rotation, flip))
++        }
++
++        /// Follows the rotation of the built-in display through the
++        /// DisplayConfig interface of the compositor (GNOME Shell, Phosh).
++        fn watch_display_rotation(&self) {
++            let conn = match gio::bus_get_sync(gio::BusType::Session, gio::Cancellable::NONE) {
++                Ok(conn) => conn,
++                Err(err) => {
++                    log::debug!("No session bus, not following display rotation: {err}");
++                    return;
++                }
++            };
++
++            let obj = self.obj();
++            let subscription = conn.subscribe_to_signal(
++                Some(DISPLAY_CONFIG),
++                Some(DISPLAY_CONFIG),
++                Some("MonitorsChanged"),
++                Some(DISPLAY_CONFIG_PATH),
++                None,
++                gio::DBusSignalFlags::NONE,
++                glib::clone!(
++                    #[weak]
++                    obj,
++                    move |_| obj.imp().query_display_rotation()
++                ),
++            );
++            self.display_subscription.replace(Some(subscription));
++            let _ = self.display_config.set(conn);
++
++            self.query_display_rotation();
++        }
++
++        fn query_display_rotation(&self) {
++            let Some(conn) = self.display_config.get() else {
++                return;
++            };
++
++            let obj = self.obj();
++            conn.call(
++                Some(DISPLAY_CONFIG),
++                DISPLAY_CONFIG_PATH,
++                DISPLAY_CONFIG,
++                "GetCurrentState",
++                None,
++                None,
++                gio::DBusCallFlags::NONE,
++                -1,
++                gio::Cancellable::NONE,
++                glib::clone!(
++                    #[weak]
++                    obj,
++                    move |res| {
++                        let rotation = match res {
++                            Ok(state) => super::built_in_display_rotation(&state).unwrap_or(0),
++                            Err(err) => {
++                                log::debug!("Could not get the display configuration: {err}");
++                                0
++                            }
++                        };
++                        let imp = obj.imp();
++                        if imp.display_rotation.replace(rotation) != rotation {
++                            imp.update_orientation();
++                        }
++                    }
++                ),
++            );
++        }
++
+         pub(crate) fn set_state(&self, state: ViewfinderState) {
+             if state != self.state.replace(state) {
+                 self.obj().notify_state();
+@@ -138,6 +266,8 @@ mod imp {
+             if camera == self.camera.replace(camera.clone()) {
+                 return;
+             }
++            self.stream_orientation.set(None);
++            self.update_orientation();
+ 
+             // We reset to READY if we landed on the ERROR state on the previous
+             // camera.
+@@ -328,7 +458,33 @@ mod imp {
+                 .expect("Missing GStreamer Base Plug-ins");
+             camerabin.set_property("image-filter", &videoconvert_image);
+ 
++            let weak = glib::SendWeakRef::from(obj.downgrade());
++            paintablesink.static_pad("sink").unwrap().add_probe(
++                gst::PadProbeType::EVENT_DOWNSTREAM,
++                move |_, info| {
++                    if let Some(gst::PadProbeData::Event(ref event)) = info.data
++                        && let gst::EventView::Tag(tag) = event.view()
++                        && let Some(orientation) = tag
++                            .tag()
++                            .generic("image-orientation")
++                            .and_then(|v| v.get::<String>().ok())
++                            .and_then(|v| parse_image_orientation(&v))
++                    {
++                        let weak = weak.clone();
++                        glib::MainContext::default().invoke(move || {
++                            if let Some(obj) = weak.upgrade() {
++                                let imp = obj.imp();
++                                imp.stream_orientation.set(Some(orientation));
++                                imp.update_orientation();
++                            }
++                        });
++                    }
++                    gst::PadProbeReturn::Ok
++                },
++            );
++
+             self.sink_paintable.set(paintablesink).unwrap();
++            self.watch_display_rotation();
+ 
+             self.picture
+                 .set_accessible_role(gtk::AccessibleRole::Presentation);
+@@ -547,6 +703,51 @@ impl Default for Viewfinder {
+     }
+ }
+ 
++/// Parses an `image-orientation` tag into clockwise degrees and a flip.
++fn parse_image_orientation(tag: &str) -> Option<(u32, bool)> {
++    let (flip, rotation) = match tag.strip_prefix("flip-") {
++        Some(rest) => (true, rest),
++        None => (false, tag),
++    };
++    match rotation.strip_prefix("rotate-")?.parse().ok()? {
++        degrees @ (0 | 90 | 180 | 270) => Some((degrees, flip)),
++        _ => None,
++    }
++}
++
++/// Returns the clockwise rotation of the logical monitor that shows the
++/// built-in display, from a DisplayConfig `GetCurrentState` reply.
++fn built_in_display_rotation(state: &glib::Variant) -> Option<u32> {
++    let built_in: Vec<String> = state
++        .try_child_value(1)?
++        .iter()
++        .filter(|monitor| {
++            monitor
++                .try_child_value(2)
++                .and_then(|props| {
++                    glib::VariantDict::new(Some(&props)).lookup_value("is-builtin", None)
++                })
++                .and_then(|v| v.get::<bool>())
++                .unwrap_or(false)
++        })
++        .filter_map(|monitor| monitor.try_child_value(0)?.try_child_value(0)?.get())
++        .collect();
++
++    state.try_child_value(2)?.iter().find_map(|logical| {
++        let shows_built_in = logical.try_child_value(5)?.iter().any(|spec| {
++            spec.try_child_value(0)
++                .and_then(|c| c.get::<String>())
++                .is_some_and(|c| built_in.contains(&c))
++        });
++        if !shows_built_in {
++            return None;
++        }
++        // DisplayConfig transforms follow wl_output: 1 is 90 degrees, 2 is
++        // 180, 3 is 270, and 4..7 the flipped ones.
++        Some((logical.try_child_value(3)?.get::<u32>()? & 3) * 90)
++    })
++}
++
+ impl Viewfinder {
+     /// Creates a new [`Viewfinder`][crate::Viewfinder]
+     ///
+@@ -884,6 +1085,19 @@ impl Viewfinder {
+             .camerabin()
+             .dynamic_cast_ref::<gst::TagSetter>()
+             .unwrap();
++        // Drop the orientation of an earlier picture.
++        tagsetter.reset_tags();
++
++        // A built-in camera turns with the display: store the picture the
++        // way it is shown in the viewfinder, not in the stream orientation.
++        if let Some((rotation, flip)) = imp.display_orientation() {
++            let orientation = format!("{}rotate-{rotation}", if flip { "flip-" } else { "" });
++            tagsetter.add_tag::<gst::tags::ImageOrientation>(
++                &orientation.as_str(),
++                gst::TagMergeMode::Replace,
++            );
++        }
++
+         tagsetter.add_tag::<gst::tags::ApplicationName>(
+             crate::APP_ID.get().unwrap(),
+             gst::TagMergeMode::Replace,
