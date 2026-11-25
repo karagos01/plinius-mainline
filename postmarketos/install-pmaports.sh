@@ -11,6 +11,10 @@
 #   device/testing/modemmanager-plugin-mtk-ccci       (+ ../mm-plugin-mtk-ccci)
 #   temp/callaudiod                                    (speaker button fix)
 #   temp/phosh                                         (screenshot fix)
+#   temp/libcamera                                     (CAMSV + GC32E1)
+#   temp/snapshot                                      (landscape viewfinder)
+#   temp/mesa                                          (dmabuf export fix)
+#   temp/gtk4.0                                        (GstGL EGLDisplay fix)
 # Then build and install as usual, e.g.:
 #   pmbootstrap checksum linux-postmarketos-mediatek-mt6878
 #   pmbootstrap build linux-postmarketos-mediatek-mt6878
@@ -23,7 +27,8 @@ PMAPORTS=${1:-$(pmbootstrap config aports)}
 K=linux-postmarketos-mediatek-mt6878
 for p in device/testing/device-volla-plinius device/testing/$K \
 	device/testing/plinius-modemd device/testing/modemmanager-plugin-mtk-ccci \
-	temp/callaudiod temp/phosh; do
+	temp/callaudiod temp/phosh temp/libcamera temp/snapshot temp/mesa \
+	temp/gtk4.0; do
 	rm -rf "${PMAPORTS:?}/$p"
 	mkdir -p "$PMAPORTS/$p"
 	cp -r "$HERE/$(basename "$p")/." "$PMAPORTS/$p/"
