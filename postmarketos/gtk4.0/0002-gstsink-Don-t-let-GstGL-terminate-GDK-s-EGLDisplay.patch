@@ -1,0 +1,56 @@
+From: Jan Benedikt <karagos01@gmail.com>
+Subject: [PATCH] gstsink: Don't let GstGL terminate GDK's EGLDisplay on Wayland
+
+On Wayland the sink hands GstGL a GstGLDisplayWayland for GDK's
+wl_display. GstGL derives a GstGLDisplayEGL from it on demand, and since
+EGL returns one EGLDisplay per native display, that is the same
+EGLDisplay GDK renders with. That GstGLDisplayEGL is not marked foreign,
+so when the last media stream is disposed it calls eglTerminate() and
+every GL context of the application stops working: the next
+gdk_gl_context_make_current() fails with EGL_BAD_DISPLAY and GSK
+crashes on a NULL context.
+
+GNOME Snapshot hits this after each shutter sound, crashing on the
+second picture on a Mali-G615 (panthor) phone running Phosh.
+
+Mark the derived GstGLDisplayEGL as foreign, like the X11 path does by
+wrapping GDK's EGLDisplay with gst_gl_display_egl_new_with_egl_display().
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Signed-off-by: Jan Benedikt <karagos01@gmail.com>
+---
+--- a/gtk/media/gtkgstsink.c
++++ b/gtk/media/gtkgstsink.c
+@@ -45,7 +45,7 @@
+ #include <gst/d3d12/gstd3d12.h>
+ #endif
+ 
+-#if GST_GL_HAVE_PLATFORM_EGL && (GST_GL_HAVE_WINDOW_WIN32 || GST_GL_HAVE_WINDOW_X11)
++#if GST_GL_HAVE_PLATFORM_EGL && (GST_GL_HAVE_WINDOW_WIN32 || GST_GL_HAVE_WINDOW_X11 || GST_GL_HAVE_WINDOW_WAYLAND)
+ #include <gst/gl/egl/gstgldisplay_egl.h>
+ #endif
+ 
+@@ -891,6 +891,23 @@
+ 
+           wayland_display = gdk_wayland_display_get_wl_display (display);
+           self->gst_display = GST_GL_DISPLAY (gst_gl_display_wayland_new_with_display (wayland_display));
++
++          /* GstGL creates a GstGLDisplayEGL for the wl_display on demand.
++           * EGL hands out one EGLDisplay per native display, so that is the
++           * very EGLDisplay GDK renders with, and GstGL would eglTerminate()
++           * it once the sink goes away, taking every GL context of the
++           * application down with it. GDK owns the EGLDisplay: mark it
++           * foreign. */
++          {
++            GstGLDisplayEGL *display_egl;
++
++            display_egl = gst_gl_display_egl_from_gl_display (self->gst_display);
++            if (display_egl)
++              {
++                gst_gl_display_egl_set_foreign (display_egl, TRUE);
++                gst_object_unref (display_egl);
++              }
++          }
+           self->gst_gdk_context = gst_gl_context_new_wrapped (self->gst_display, gl_handle, platform, gl_api);
+         }
+       else
