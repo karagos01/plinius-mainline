@@ -5,7 +5,7 @@ maintainer="Jan Benedikt <karagos01@gmail.com>"
 pkgname=device-volla-plinius
 pkgdesc="Volla Phone Plinius"
 pkgver=0.1
-pkgrel=11
+pkgrel=12
 url="https://postmarketos.org"
 license="MIT"
 arch="aarch64"
@@ -23,6 +23,7 @@ source="
 	modules-initfs
 	mt6878-wifi-nvram.bin
 	81-volla-plinius-sensors.rules
+	82-volla-plinius-camera.rules
 	mt7921-soc.conf
 	30-plinius-wifi-powersave.conf
 	plinius-wlan-garp
@@ -78,6 +79,8 @@ package() {
 	# Keep iio-sensor-proxy on the proximity sensor, not the SAR.
 	install -Dm644 "$srcdir"/81-volla-plinius-sensors.rules \
 		"$pkgdir"/usr/lib/udev/rules.d/81-volla-plinius-sensors.rules
+	install -Dm644 "$srcdir"/82-volla-plinius-camera.rules \
+		"$pkgdir"/usr/lib/udev/rules.d/82-volla-plinius-camera.rules
 }
 
 # Regenerate with: pmbootstrap checksum device-volla-plinius
@@ -86,6 +89,7 @@ sha512sums="
 7f58790879f84192ac06efe29fd4b84318920d894324f17a804d29e8713a258ba236374e12050afb12a9f913853d7cfd185bb9855fe08969aa8ef3a2ae084aa7  modules-initfs
 5a40b8e89523ca8bb035f12fd52ec79600ad32af2f5b5318c75dfbdfc376868656c9f46a344e1c7fede8ac787359eaa03d22bf737bd69cd5bd47dde919f041f5  mt6878-wifi-nvram.bin
 90326f9c1b4463640ee63396f153a2c4b46875cb9c9ef7e985a3ee696a716dbecff7b367f40ef32f6dbf133a2386247beab5b2e40cba017e7ee388d573661c76  81-volla-plinius-sensors.rules
+d4d9a56ed4a5fff53ddc22ed9df82fb3ae1410a0b4cb0ffe29482ee3ce8a5ee2f9364b22a7b9d7f4e219ca683dfa012675c8ac31d64c47e473d7027211ce2aee  82-volla-plinius-camera.rules
 66b69144493f2435698d0f8904230854f4f26c1aa29452bcd2a3ede5597d9f655de9d408e9fc849e6acbdd128facb9556677b779748c8e7a112cf1b1b095be13  mt7921-soc.conf
 526fca2485c5ca95768431ff8a91c6d23e0db1a431ca52cd6c1bdde01aa26867efd176567645a54fe9227d9984e421d98841bd50c22949f4349261acf3da29f8  30-plinius-wifi-powersave.conf
 c48b2b9e5c9a19440791fb24d76b294613129dcb63b382a3c4cdda2696015e564c066d6bdac349d82250a08979fdd1419c89ff9a688399fd3181f82ce5b74dbf  plinius-wlan-garp

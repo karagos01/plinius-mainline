@@ -1,0 +1,4 @@
+# The camera capture device (CAMSV) can only address the low 4 GiB and
+# needs physically contiguous buffers: let libcamera allocate them from
+# the CMA dma-buf heap instead of falling back to udmabuf.
+SUBSYSTEM=="dma_heap", KERNEL=="reserved", GROUP="video", MODE="0660"
