@@ -1,0 +1,29 @@
+From f09bfdc2eae230eadfd373a953d67aec4bf7a371 Mon Sep 17 00:00:00 2001
+From: Jan Benedikt <karagos01@gmail.com>
+Date: Wed, 25 Nov 2026 10:19:08 +0100
+Subject: [PATCH 3/4] pipeline: simple: Add support for MediaTek CAMSV
+
+The CAMSV block of MediaTek ISP7 SoCs such as the MT6878 dumps the raw
+Bayer stream of a SENINF CSI-2 receiver to memory without processing.
+Add it to the simple pipeline handler with the software ISP enabled.
+
+Signed-off-by: Jan Benedikt <karagos01@gmail.com>
+---
+ src/libcamera/pipeline/simple/simple.cpp | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/src/libcamera/pipeline/simple/simple.cpp b/src/libcamera/pipeline/simple/simple.cpp
+index 35e0664..a9b2b3f 100644
+--- a/src/libcamera/pipeline/simple/simple.cpp
++++ b/src/libcamera/pipeline/simple/simple.cpp
+@@ -262,6 +262,7 @@ static const SimplePipelineInfo supportedDevices[] = {
+ 	{ "intel-ipu6", {}, true },
+ 	{ "intel-ipu7", {}, true },
+ 	{ "j721e-csi2rx", {}, true },
++	{ "mtk-camsv", {}, true },
+ 	{ "mtk-seninf", { { "mtk-mdp", 3 } }, false },
+ 	{ "mxc-isi", {}, false },
+ 	{ "qcom-camss", {}, true },
+-- 
+2.43.0
+

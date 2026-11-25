@@ -1,0 +1,65 @@
+From f814e675250ca99c2bd610c20daf7023d4753803 Mon Sep 17 00:00:00 2001
+From: Jan Benedikt <karagos01@gmail.com>
+Date: Wed, 25 Nov 2026 10:19:17 +0100
+Subject: [PATCH 4/4] libcamera: Add GalaxyCore GC32E1 sensor support
+
+Add the camera sensor properties and a sensor helper for the GC32E1. The
+analogue gain register is linear with 1024 representing unity gain and
+the black level is 64 at 10 bits.
+
+Signed-off-by: Jan Benedikt <karagos01@gmail.com>
+---
+ src/ipa/libipa/camera_sensor_helper.cpp           | 12 ++++++++++++
+ src/libcamera/sensor/camera_sensor_properties.cpp | 13 +++++++++++++
+ 2 files changed, 25 insertions(+)
+
+diff --git a/src/ipa/libipa/camera_sensor_helper.cpp b/src/ipa/libipa/camera_sensor_helper.cpp
+index 359040e..3b9ba31 100644
+--- a/src/ipa/libipa/camera_sensor_helper.cpp
++++ b/src/ipa/libipa/camera_sensor_helper.cpp
+@@ -519,6 +519,18 @@ public:
+ };
+ REGISTER_CAMERA_SENSOR_HELPER("gc08a3", CameraSensorHelperGc08a3)
+ 
++class CameraSensorHelperGc32e1 : public CameraSensorHelper
++{
++public:
++	CameraSensorHelperGc32e1()
++	{
++		/* 64 at 10 bits, as used by the vendor driver. */
++		blackLevel_ = 4096;
++		gain_ = AnalogueGainLinear{ 1, 0, 0, 1024 };
++	}
++};
++REGISTER_CAMERA_SENSOR_HELPER("gc32e1", CameraSensorHelperGc32e1)
++
+ class CameraSensorHelperHm1246 : public CameraSensorHelper
+ {
+ public:
+diff --git a/src/libcamera/sensor/camera_sensor_properties.cpp b/src/libcamera/sensor/camera_sensor_properties.cpp
+index 20cfd0b..6c86be2 100644
+--- a/src/libcamera/sensor/camera_sensor_properties.cpp
++++ b/src/libcamera/sensor/camera_sensor_properties.cpp
+@@ -132,6 +132,19 @@ const CameraSensorProperties *CameraSensorProperties::get(const std::string &sen
+ 				.hblankDelay = 2
+ 			},
+ 		} },
++		{ "gc32e1", {
++			.unitCellSize = { 700, 700 },
++			.testPatternModes = {
++				{ controls::draft::TestPatternModeOff, 0 },
++				{ controls::draft::TestPatternModeColorBars, 2 },
++			},
++			.sensorDelays = {
++				.exposureDelay = 2,
++				.gainDelay = 2,
++				.vblankDelay = 2,
++				.hblankDelay = 2
++			},
++		} },
+ 		{ "hi846", {
+ 			.unitCellSize = { 1120, 1120 },
+ 			.testPatternModes = {
+-- 
+2.43.0
+
