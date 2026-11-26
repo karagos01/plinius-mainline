@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: CC0-1.0
+%YAML 1.1
+---
+version: 1
+algorithms:
+  - BlackLevel:
+  - Awb:
+  - Adjust:
+  - Agc:
+  - Af:
+options:
+  # Debayering the full 4624x3472 frame is slow and its buffers do not fit
+  # the CMA area next to the raw frames.
+  max_output_width: 1920
+  max_output_height: 1080
+...

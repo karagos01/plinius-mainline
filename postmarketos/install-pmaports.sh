@@ -11,7 +11,7 @@
 #   device/testing/modemmanager-plugin-mtk-ccci       (+ ../mm-plugin-mtk-ccci)
 #   temp/callaudiod                                    (speaker button fix)
 #   temp/phosh                                         (screenshot fix)
-#   temp/libcamera                                     (CAMSV + GC32E1)
+#   temp/libcamera                                     (CAMSV + GC32E1 + AF)
 #   temp/snapshot                                      (landscape viewfinder)
 #   temp/mesa                                          (dmabuf export fix)
 #   temp/gtk4.0                                        (GstGL EGLDisplay fix)

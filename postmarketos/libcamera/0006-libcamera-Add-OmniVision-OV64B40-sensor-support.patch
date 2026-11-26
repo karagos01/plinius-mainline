@@ -1,0 +1,61 @@
+From 01fb20ced2fed94ba7abd557cafa96c42f4d9427 Mon Sep 17 00:00:00 2001
+From: Jan Benedikt <karagos01@gmail.com>
+Date: Thu, 26 Nov 2026 16:40:58 +0100
+Subject: [PATCH 2/3] libcamera: Add OmniVision OV64B40 sensor support
+
+Add the camera sensor properties and the camera sensor helper for the
+OmniVision OV64B40. The analogue gain register holds the real gain in
+units of 1/256 and the black level is 64 at 10 bits.
+---
+ src/ipa/libipa/camera_sensor_helper.cpp           | 13 +++++++++++++
+ src/libcamera/sensor/camera_sensor_properties.cpp | 10 ++++++++++
+ 2 files changed, 23 insertions(+)
+
+diff --git a/src/ipa/libipa/camera_sensor_helper.cpp b/src/ipa/libipa/camera_sensor_helper.cpp
+index 3b9ba31..ec7fde1 100644
+--- a/src/ipa/libipa/camera_sensor_helper.cpp
++++ b/src/ipa/libipa/camera_sensor_helper.cpp
+@@ -863,6 +863,19 @@ public:
+ };
+ REGISTER_CAMERA_SENSOR_HELPER("ov64a40", CameraSensorHelperOv64a40)
+ 
++class CameraSensorHelperOv64b40 : public CameraSensorHelper
++{
++public:
++	CameraSensorHelperOv64b40()
++	{
++		/* 64 at 10 bits */
++		blackLevel_ = 4096;
++		/* Real gain in units of 1/256, 0x100 is 1x */
++		gain_ = AnalogueGainLinear{ 1, 0, 0, 256 };
++	}
++};
++REGISTER_CAMERA_SENSOR_HELPER("ov64b40", CameraSensorHelperOv64b40)
++
+ class CameraSensorHelperOv8858 : public CameraSensorHelper
+ {
+ public:
+diff --git a/src/libcamera/sensor/camera_sensor_properties.cpp b/src/libcamera/sensor/camera_sensor_properties.cpp
+index 6c86be2..4bf751b 100644
+--- a/src/libcamera/sensor/camera_sensor_properties.cpp
++++ b/src/libcamera/sensor/camera_sensor_properties.cpp
+@@ -508,6 +508,16 @@ const CameraSensorProperties *CameraSensorProperties::get(const std::string &sen
+ 			},
+ 			.sensorDelays = { },
+ 		} },
++		{ "ov64b40", {
++			.unitCellSize = { 700, 700 },
++			.testPatternModes = {},
++			.sensorDelays = {
++				.exposureDelay = 2,
++				.gainDelay = 2,
++				.vblankDelay = 2,
++				.hblankDelay = 2
++			},
++		} },
+ 		{ "ov64a40", {
+ 			.unitCellSize = { 1008, 1008 },
+ 			.testPatternModes = {
+-- 
+2.43.0
+

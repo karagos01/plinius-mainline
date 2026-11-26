@@ -1,0 +1,39 @@
+From ddf2098b76e2c79bce34584b465be5f0e54bbad5 Mon Sep 17 00:00:00 2001
+From: Jan Benedikt <karagos01@gmail.com>
+Date: Thu, 26 Nov 2026 16:49:54 +0100
+Subject: [PATCH 3/3] libcamera: software_isp: debayer_egl: Fix the statistics
+ window offset
+
+The GPU debayer calculates the statistics on the whole input frame with
+SwStatsCpu::processFrame(), which applies the window offset itself, but
+passes the window without its offset as done by the CPU debayer, whose
+process() adjusts the line pointers. With an input larger than the
+output, the statistics then cover the top left corner of the frame
+instead of its centre.
+
+Pass the window with its offset.
+---
+ src/libcamera/software_isp/debayer_egl.cpp | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/src/libcamera/software_isp/debayer_egl.cpp b/src/libcamera/software_isp/debayer_egl.cpp
+index df0d9c9..1300ce7 100644
+--- a/src/libcamera/software_isp/debayer_egl.cpp
++++ b/src/libcamera/software_isp/debayer_egl.cpp
+@@ -351,10 +351,10 @@ int DebayerEGL::configure(const StreamConfiguration &inputCfg,
+ 	}
+ 
+ 	/*
+-	 * Don't pass x,y from window_ since process() already adjusts for it.
+-	 * But crop the window to 2/3 of its width and height for speedup.
++	 * The statistics are calculated on the whole input frame by
++	 * SwStatsCpu::processFrame(), which applies the window offset itself.
+ 	 */
+-	stats_->setWindow(quadBayer_ ? window_ : Rectangle(window_.size()));
++	stats_->setWindow(window_);
+ 
+ 	inputBufferCount_ = inputCfg.bufferCount;
+ 	outputBufferCount_ = outputCfg.bufferCount;
+-- 
+2.43.0
+
