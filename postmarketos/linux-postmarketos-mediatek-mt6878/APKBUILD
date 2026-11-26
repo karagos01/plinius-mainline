@@ -10,7 +10,7 @@
 # which lacks the Plinius drivers.
 maintainer="Jan Benedikt <karagos01@gmail.com>"
 pkgname=linux-postmarketos-mediatek-mt6878
-pkgver=7.2_git20261124
+pkgver=7.2_git20261125
 pkgrel=0
 pkgdesc="Mainline kernel for MT6878 devices (Volla Phone Plinius bring-up)"
 arch="aarch64"
@@ -36,7 +36,7 @@ makedepends="
 "
 
 _repository="linux"
-_commit="3e65813990b44f0cddce7446f3dc86196081a00d"
+_commit="dd709600b6f0e70a6ea6a426b1f8309e3e66b208"
 _config="config-$_flavor.$arch"
 source="
 	$pkgname-$_commit.tar.gz::https://github.com/karagos01/$_repository/archive/$_commit.tar.gz
@@ -84,6 +84,6 @@ package() {
 
 # Regenerate with: pmbootstrap checksum linux-postmarketos-mediatek-mt6878
 sha512sums="
-d05f9e866ef4adc0bbea6c7dfda35641f48e13b7dd34cb354a513c4ce8e78d9859a2b54999bf223383f93e1bac741f6fb48f6527f880251a89e167c7ca3c2c56  linux-postmarketos-mediatek-mt6878-3e65813990b44f0cddce7446f3dc86196081a00d.tar.gz
-3bfb857e3584ace9d6794745a9bc1b3f61b990dc26ea6ca742444a926d779f3bc28795f74903642c49fb312928d880c7b4eab7f026379dcf6bf9386846cf8b60  config-postmarketos-mediatek-mt6878.aarch64
+6fd2d264c224d697b384c1db91696511fc790a59c1d2525f2b86ade29b06936bd701070bb00be02bbaa7ab6643ce8f7770c71df91da041ebec9564eaf4d3ab57  linux-postmarketos-mediatek-mt6878-dd709600b6f0e70a6ea6a426b1f8309e3e66b208.tar.gz
+61ccfe17fcbc4f9c45b9aa9fb1acc46b185d9d2ee9bae50a5aa49f59575934038be8ab97ec14187fad3fd90817aa84ba405b9817d19fe3cc651acd90d9e36302  config-postmarketos-mediatek-mt6878.aarch64
 "
