@@ -98,16 +98,35 @@ NDK, 64-bit and 32-bit (EGL/GLES, GBM, panfrost Vulkan), as an overlay of
 `/vendor/lib64` and `/vendor/lib`; the vendor image itself stays
 untouched.
 
-The `waydroid-plinius` package carries that overlay and sets Waydroid up:
-it puts the gralloc and EGL properties and
-`persist.waydroid.multi_windows` into `waydroid.cfg`, enables the
-`waydroid-container` service and the Waydroid firewall rules (the pmOS
-firewall otherwise drops DHCP, DNS and forwarding from `waydroid0`).
-With multi-window mode every Android app opens in its own window, and
-Waydroid adds a launcher with the app's icon to Phosh for every Android
-app, so they start like native apps. The NDK only runs on x86_64, so the
-Mesa is built on the PC and the package takes it prebuilt; the archive is
-not kept in git:
+The `waydroid-plinius` package carries that overlay and sets Waydroid up
+so that Android apps feel native in Phosh:
+
+- **Windows and launchers.** `persist.waydroid.multi_windows` opens every
+  Android app in its own window; Waydroid itself adds a launcher with the
+  app's icon to Phosh for every Android app. Starting one from Phosh
+  boots Android first if needed (about 15 s).
+- **GPU.** The gralloc and EGL properties select the overlay's Mesa.
+  Vulkan (panfrost) is enabled for the apps that use it; Mesa marks the
+  Mali-G615 (v11) as not well tested, so it needs
+  `debug.mesa.pan.i.want.a.broken.vulkan.driver`, and the Android UI
+  itself keeps rendering with GLES.
+- **Clipboard.** Waydroid shares it through `py3-pyclip` and
+  `wl-clipboard`, pulled in as dependencies.
+- **Storage.** The Android shared storage (Download, Pictures, DCIM, ...)
+  appears as `~/Android`, also bookmarked in the file chooser. The
+  `waydroid-plinius` service gives the user ACL access to it at boot,
+  with default ACLs that keep files created on either side accessible
+  to both. (A bind mount of a host folder into the Android storage does
+  not work: Android reaches its storage through a non-recursive bind of
+  `/data/media`.) Before the first Waydroid session there is no storage
+  yet; run `rc-service waydroid-plinius restart` after it, or reboot.
+- The properties go into `waydroid.cfg` (kept by `waydroid init`); the
+  package also enables the `waydroid-container` service and the Waydroid
+  firewall rules (the pmOS firewall otherwise drops DHCP, DNS and
+  forwarding from `waydroid0`).
+
+The NDK only runs on x86_64, so the Mesa is built on the PC and the
+package takes it prebuilt; the archive is not kept in git:
 
 ```sh
 postmarketos/waydroid-mesa.sh   # host packages: see the script
@@ -129,7 +148,7 @@ Then open any Android app from the Phosh app grid; the first start boots
 Android, which takes a while. `waydroid show-full-ui` shows the whole
 Android UI instead. A running session keeps Android awake; stop it with
 `waydroid session stop` before standby. Once a vendor image ships Mesa
-26.3 or later, the package is no longer needed.
+26.3 or later, the Mesa overlay is no longer needed.
 
 ## pmbootstrap quirks
 

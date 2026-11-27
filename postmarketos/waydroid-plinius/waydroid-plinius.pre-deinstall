@@ -1,3 +1,4 @@
 #!/bin/sh
 /usr/libexec/waydroid-plinius-setup --remove
+rc-update -q del waydroid-plinius default
 exit 0

@@ -1,0 +1,14 @@
+#!/sbin/openrc-run
+
+description="Make the Waydroid shared storage reachable as ~/Android"
+
+depend() {
+	need localmount
+	before waydroid-container
+}
+
+start() {
+	ebegin "Sharing the Waydroid storage"
+	/usr/libexec/waydroid-plinius-share
+	eend $?
+}

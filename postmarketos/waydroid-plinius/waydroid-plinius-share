@@ -1,0 +1,37 @@
+#!/bin/sh
+# Make the Android shared storage of every Waydroid user reachable from
+# postmarketOS as ~/Android (Download, Pictures, DCIM, ...).
+#
+# Android keeps it in ~/.local/share/waydroid/data/media/0, owned by its
+# media_rw group (1023). ACLs give the host user access, and default ACLs
+# keep everything created later accessible to both sides. A bind mount of
+# a host folder into the Android storage does not work: Android reaches
+# its storage through a non-recursive bind of /data/media, which does not
+# see mounts below it.
+for home in /home/*; do
+	media=$home/.local/share/waydroid/data/media
+	[ -d "$media/0" ] || continue
+	uid=$(stat -c %u "$home")
+	gid=$(id -g "$(stat -c %U "$home")")
+
+	setfacl -m "u:$uid:x" "$media"
+	# The whole tree once, then only the top directory on every start
+	if getfacl -cp "$media/0" | grep -q "^default:user:$uid:"; then
+		setfacl -m "u:$uid:rwx,d:u:$uid:rwx,d:g:1023:rwx" "$media/0"
+	else
+		setfacl -R -m "u:$uid:rwX,d:u:$uid:rwX,d:g:1023:rwX" "$media/0"
+	fi
+
+	if [ ! -e "$home/Android" ] && [ ! -L "$home/Android" ]; then
+		ln -s "$media/0" "$home/Android"
+		chown -h "$uid:$gid" "$home/Android"
+	fi
+	# A bookmark in the file chooser
+	bm=$home/.config/gtk-3.0/bookmarks
+	if ! grep -qs "^file://$home/Android" "$bm"; then
+		mkdir -p "${bm%/*}" && chown "$uid:$gid" "${bm%/*}"
+		echo "file://$home/Android Android" >> "$bm"
+		chown "$uid:$gid" "$bm"
+	fi
+done
+exit 0

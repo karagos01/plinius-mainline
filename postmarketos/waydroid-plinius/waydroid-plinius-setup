@@ -1,6 +1,6 @@
 #!/usr/bin/python3
-# Set the Android properties that make Waydroid use the packaged Mesa and
-# open each Android app in its own window, so that apps appear in Phosh
+# Set the Android properties that make Waydroid use the packaged Mesa
+# (GLES and Vulkan) and open each Android app in its own window, so that apps appear in Phosh
 # like native ones (their launchers are created by Waydroid itself).
 #
 #   waydroid-plinius-setup [--remove]
@@ -18,6 +18,11 @@ PROPS = {
     # minigbm gralloc on the overlay's GBM, Mesa EGL
     "ro.hardware.gralloc": "minigbm_gbm_mesa",
     "ro.hardware.egl": "mesa",
+    # panfrost Vulkan for the apps that want it (Waydroid does not know
+    # the panthor kernel driver); Mesa marks Mali v11 as not well tested,
+    # Android UI rendering stays on GLES
+    "ro.hardware.vulkan": "panfrost",
+    "debug.mesa.pan.i.want.a.broken.vulkan.driver": "1",
     "persist.waydroid.multi_windows": "true",
 }
 

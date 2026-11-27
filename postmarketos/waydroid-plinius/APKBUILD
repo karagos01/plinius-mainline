@@ -8,16 +8,19 @@
 maintainer="Jan Benedikt <karagos01@gmail.com>"
 pkgname=waydroid-plinius
 pkgver=26.3.1
-pkgrel=0
-pkgdesc="Waydroid integration for the Volla Phone Plinius: Mali-G615 Mesa, Android apps in their own windows"
+pkgrel=2
+pkgdesc="Waydroid integration for the Volla Phone Plinius: GPU, windows, clipboard, storage"
 url="https://github.com/karagos01/plinius-mainline"
 arch="aarch64"
 license="MIT"
-depends="python3 waydroid waydroid-nftrules"
+# py3-pyclip + wl-clipboard: Waydroid's clipboard sharing, acl: ~/Android
+depends="acl py3-pyclip python3 waydroid waydroid-nftrules wl-clipboard"
 install="$pkgname.post-install $pkgname.post-upgrade $pkgname.pre-deinstall"
 source="
 	waydroid-mesa-overlay.tar.gz
 	waydroid-plinius-setup
+	waydroid-plinius-share
+	waydroid-plinius.initd
 "
 # Android binaries: nothing to check, strip or trace on the host side
 options="!check !strip !tracedeps"
@@ -27,6 +30,10 @@ package() {
 	cp -r "$srcdir"/vendor "$pkgdir"/var/lib/waydroid/overlay/
 	install -Dm755 "$srcdir"/waydroid-plinius-setup \
 		"$pkgdir"/usr/libexec/waydroid-plinius-setup
+	install -Dm755 "$srcdir"/waydroid-plinius-share \
+		"$pkgdir"/usr/libexec/waydroid-plinius-share
+	install -Dm755 "$srcdir"/waydroid-plinius.initd \
+		"$pkgdir"/etc/init.d/waydroid-plinius
 	# The pmOS firewall otherwise drops DHCP, DNS and forwarding from waydroid0
 	install -d "$pkgdir"/etc/nftables.d
 	ln -s /usr/share/nftables.avail/51_waydroid.nft \
@@ -35,5 +42,7 @@ package() {
 
 sha512sums="
 ae4ea949b5f93bce1cce81138d2493624bb61671af6cf97f5a8a70125dfca984828d235a3685461b2dd7ce34a95a53b1371ff2e7065fda2476d3f6ef6828ba64  waydroid-mesa-overlay.tar.gz
-d7a9081a37e8aa82f7e51119d835186ad6c12ad12df0c1980481a2b370c6d2528b4f577d6a376627ee8b8c23c9c07760097f0a823203a3e646d747c96c868664  waydroid-plinius-setup
+38f7664e93dac8cef7c67668f5e5bcddd551b363119e97eabdb8733bcd57477a571fbcdeea34d4a2cc8668b66b7613bf8ae5a3dc9bd7870582d1a133feb47ad1  waydroid-plinius-setup
+197b3bbb09dfd7215e60be15d2f959b06e6a36a524ee1ebfa7dfc82d0aabb6f9c7f7bbad784a32c67202d704e7ad8faa92bf59436b1e2b7982cffb57c8c235c4  waydroid-plinius-share
+927b6915ad4e1df0bf9a6e29779bc672cbac9c705f6b663f3e394886f5101219f53d259743f55dc9f26278fbdfae51077298e925ed881f3c3424f30a51341e59  waydroid-plinius.initd
 "
