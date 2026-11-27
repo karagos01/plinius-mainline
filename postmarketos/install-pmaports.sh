@@ -9,7 +9,8 @@
 #   device/testing/linux-postmarketos-mediatek-mt6878  (+ configs/linux.config)
 #   device/testing/plinius-modemd                     (modem userspace, ../modemd)
 #   device/testing/modemmanager-plugin-mtk-ccci       (+ ../mm-plugin-mtk-ccci)
-#   device/testing/waydroid-plinius                   (+ Mesa from waydroid-mesa.sh)
+#   device/testing/waydroid-plinius                   (+ Mesa from waydroid-mesa.sh,
+#                                                      keyboard from waydroid-ime.sh)
 #   temp/callaudiod                                    (speaker button fix)
 #   temp/phosh                                         (screenshot fix)
 #   temp/libcamera                                     (CAMSV + GC32E1 + AF)
@@ -45,6 +46,10 @@ cp "$HERE/../../firmware/vendor/WIFI" \
 W=$HERE/../../work/waydroid-mesa/waydroid-mesa-overlay.tar.gz
 [ -f "$W" ] && cp "$W" "$PMAPORTS/device/testing/waydroid-plinius/" ||
 	echo "no $W: run waydroid-mesa.sh to build waydroid-plinius" >&2
+# Waydroid keyboard: prebuilt by waydroid-ime.sh, kept out of git
+W=$HERE/../../work/waydroid-ime/PliniusIme.apk
+[ -f "$W" ] && cp "$W" "$PMAPORTS/device/testing/waydroid-plinius/" ||
+	echo "no $W: run waydroid-ime.sh to build waydroid-plinius" >&2
 cp "$HERE/../configs/linux.config" \
 	"$PMAPORTS/device/testing/$K/config-postmarketos-mediatek-mt6878.aarch64"
 echo "installed into $PMAPORTS"

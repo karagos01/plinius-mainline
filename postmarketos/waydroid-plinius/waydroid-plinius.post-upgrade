@@ -4,4 +4,6 @@ rc-update -q add waydroid-container default
 rc-update -q add waydroid-plinius default
 rc-service -q waydroid-plinius start
 rc-service -q nftables reload 2>/dev/null
+# Already running services are not restarted; select the keyboard anyway
+/usr/libexec/waydroid-plinius-ime
 exit 0

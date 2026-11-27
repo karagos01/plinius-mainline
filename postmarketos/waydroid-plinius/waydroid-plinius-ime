@@ -1,0 +1,51 @@
+#!/bin/sh
+# Sets up the "pmOS keyboard" (see ime/ and ime-bridge/) once Android runs:
+#  - makes it the Android input method, once; a later choice of the user is
+#    kept,
+#  - on every boot, hands its token to waydroid-ime-bridge, which accepts
+#    only that client (the input method creates a new token when its data
+#    is wiped, and the user cannot read the Android app data).
+# Returns at once and waits in the background for the first Waydroid session.
+PKG=org.postmarketos.plinius.ime
+IME=$PKG/.BridgeIme
+MARK=/var/lib/waydroid/plinius-ime-selected
+
+if [ "$1" != "--wait" ]; then
+	"$0" --wait </dev/null >/dev/null 2>&1 &
+	exit 0
+fi
+
+select_ime() {
+	[ -e "$MARK" ] && return 0
+	waydroid shell -- ime list -a -s 2>/dev/null | grep -qx "$IME" || return 1
+	waydroid shell -- ime enable "$IME" &&
+		waydroid shell -- ime set "$IME" &&
+		touch "$MARK"
+}
+
+sync_token() {
+	synced=
+	for home in /home/*; do
+		[ -d "$home"/.local/share/waydroid/data ] || continue
+		prefs=$home/.local/share/waydroid/data/data/$PKG/shared_prefs/bridge.xml
+		token=$(sed -n 's|.*name="token">\([0-9a-f]*\)<.*|\1|p' "$prefs" 2>/dev/null)
+		[ -n "$token" ] || return 1
+		# Written as the user: root must not follow links in a user's home
+		printf %s "$token" | su -s /bin/sh -c 'umask 077 &&
+			mkdir -p "$HOME"/.local/state/waydroid-plinius &&
+			cat >"$HOME"/.local/state/waydroid-plinius/ime-token' \
+			"$(stat -c %U "$home")" || return 1
+		synced=1
+	done
+	[ -n "$synced" ]
+}
+
+i=0
+while [ $i -lt 360 ]; do
+	if [ "$(waydroid shell -- getprop sys.boot_completed 2>/dev/null)" = 1 ]; then
+		select_ime
+		sync_token && [ -e "$MARK" ] && exit 0
+	fi
+	sleep 10
+	i=$((i + 1))
+done

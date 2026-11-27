@@ -1,6 +1,6 @@
 #!/sbin/openrc-run
 
-description="Make the Waydroid shared storage reachable as ~/Android"
+description="Waydroid storage as ~/Android and the pmOS keyboard in Android"
 
 depend() {
 	need localmount
@@ -10,5 +10,7 @@ depend() {
 start() {
 	ebegin "Sharing the Waydroid storage"
 	/usr/libexec/waydroid-plinius-share
-	eend $?
+	eend $? || return 1
+	# Returns at once; waits in the background for Android to boot
+	/usr/libexec/waydroid-plinius-ime
 }

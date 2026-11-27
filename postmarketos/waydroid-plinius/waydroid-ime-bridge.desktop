@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Waydroid keyboard bridge
+Comment=Lets the on-screen keyboard type into Android apps
+Exec=/usr/bin/waydroid-ime-bridge
+NoDisplay=true
+X-GNOME-AutoRestart=true

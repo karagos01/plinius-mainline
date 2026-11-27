@@ -1,0 +1,18 @@
+[package]
+name = "waydroid-ime-bridge"
+version = "0.1.0"
+edition = "2021"
+description = "Lets the Phosh on-screen keyboard type into Waydroid apps"
+license = "GPL-3.0-or-later"
+
+[dependencies]
+libc = "0.2"
+wayland-client = "0.31"
+wayland-protocols = { version = "0.32", features = ["client", "unstable"] }
+wayland-protocols-wlr = { version = "0.3", features = ["client"] }
+xkbcommon = { version = "0.9", default-features = false, features = ["wayland"] }
+
+[profile.release]
+lto = true
+opt-level = "s"
+strip = true

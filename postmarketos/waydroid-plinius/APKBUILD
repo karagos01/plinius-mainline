@@ -5,25 +5,49 @@
 # postmarketos/waydroid-mesa.sh (the NDK only runs on x86_64 hosts, so it
 # cannot be built inside the aarch64 build chroot). The archive is copied
 # here by postmarketos/install-pmaports.sh and is not kept in git.
+#
+# The "pmOS keyboard" Android input method (ime/, prebuilt by
+# postmarketos/waydroid-ime.sh into PliniusIme.apk, also not in git) and
+# waydroid-ime-bridge (ime-bridge/) let the Phosh on-screen keyboard type
+# into Android apps.
 maintainer="Jan Benedikt <karagos01@gmail.com>"
 pkgname=waydroid-plinius
 pkgver=26.3.1
-pkgrel=2
-pkgdesc="Waydroid integration for the Volla Phone Plinius: GPU, windows, clipboard, storage"
+pkgrel=4
+pkgdesc="Waydroid integration for the Volla Phone Plinius: GPU, windows, keyboard, clipboard, storage"
 url="https://github.com/karagos01/plinius-mainline"
 arch="aarch64"
 license="MIT"
 # py3-pyclip + wl-clipboard: Waydroid's clipboard sharing, acl: ~/Android
-depends="acl py3-pyclip python3 waydroid waydroid-nftrules wl-clipboard"
+# libgcc + libxkbcommon: waydroid-ime-bridge (no tracedeps, see options)
+depends="acl libgcc libxkbcommon py3-pyclip python3 waydroid waydroid-nftrules
+	wl-clipboard"
+makedepends="cargo libxkbcommon-dev"
 install="$pkgname.post-install $pkgname.post-upgrade $pkgname.pre-deinstall"
 source="
 	waydroid-mesa-overlay.tar.gz
 	waydroid-plinius-setup
 	waydroid-plinius-share
 	waydroid-plinius.initd
+	waydroid-plinius-ime
+	waydroid-ime-bridge.desktop
+	PliniusIme.apk
 "
-# Android binaries: nothing to check, strip or trace on the host side
-options="!check !strip !tracedeps"
+# Android binaries: nothing to check, strip or trace on the host side.
+# net: cargo fetches the crates of waydroid-ime-bridge.
+options="!check !strip !tracedeps net"
+
+prepare() {
+	default_prepare
+	cp -r "$startdir"/ime-bridge "$srcdir"/
+	cd "$srcdir"/ime-bridge
+	cargo fetch --locked
+}
+
+build() {
+	cd "$srcdir"/ime-bridge
+	cargo build --frozen --release
+}
 
 package() {
 	install -d "$pkgdir"/var/lib/waydroid/overlay
@@ -34,6 +58,14 @@ package() {
 		"$pkgdir"/usr/libexec/waydroid-plinius-share
 	install -Dm755 "$srcdir"/waydroid-plinius.initd \
 		"$pkgdir"/etc/init.d/waydroid-plinius
+	install -Dm755 "$srcdir"/waydroid-plinius-ime \
+		"$pkgdir"/usr/libexec/waydroid-plinius-ime
+	install -Dm755 "$srcdir"/ime-bridge/target/release/waydroid-ime-bridge \
+		"$pkgdir"/usr/bin/waydroid-ime-bridge
+	install -Dm644 "$srcdir"/waydroid-ime-bridge.desktop \
+		"$pkgdir"/etc/xdg/autostart/waydroid-ime-bridge.desktop
+	install -Dm644 "$srcdir"/PliniusIme.apk \
+		"$pkgdir"/var/lib/waydroid/overlay/system/app/PliniusIme/PliniusIme.apk
 	# The pmOS firewall otherwise drops DHCP, DNS and forwarding from waydroid0
 	install -d "$pkgdir"/etc/nftables.d
 	ln -s /usr/share/nftables.avail/51_waydroid.nft \
@@ -44,5 +76,8 @@ sha512sums="
 ae4ea949b5f93bce1cce81138d2493624bb61671af6cf97f5a8a70125dfca984828d235a3685461b2dd7ce34a95a53b1371ff2e7065fda2476d3f6ef6828ba64  waydroid-mesa-overlay.tar.gz
 38f7664e93dac8cef7c67668f5e5bcddd551b363119e97eabdb8733bcd57477a571fbcdeea34d4a2cc8668b66b7613bf8ae5a3dc9bd7870582d1a133feb47ad1  waydroid-plinius-setup
 197b3bbb09dfd7215e60be15d2f959b06e6a36a524ee1ebfa7dfc82d0aabb6f9c7f7bbad784a32c67202d704e7ad8faa92bf59436b1e2b7982cffb57c8c235c4  waydroid-plinius-share
-927b6915ad4e1df0bf9a6e29779bc672cbac9c705f6b663f3e394886f5101219f53d259743f55dc9f26278fbdfae51077298e925ed881f3c3424f30a51341e59  waydroid-plinius.initd
+8439be2a819d9366b8ca583f043bc4fd0710b37d4bff766f58251990e7d38fe4230357c3851f0b8475e8b4364dceb2c455d184f7da0889feea3bb6fc5e17daca  waydroid-plinius.initd
+27185c34569db0345a03b2cf0cafe77af3c06bf1c9583fc21eac96daa14f538122d671300fdce30dd60ca8d85420d96c9588000d9c97e1988650b471668fc72f  waydroid-plinius-ime
+23c66548664f3f230122ed7af08e3ae4f48800cde0c54594ad5c2432226f049ffdb15c3b173b8b47a5b888665c56d8dd8e14eb9bd3cff30d451b6ec63fd358be  waydroid-ime-bridge.desktop
+de25b5cd24089ba346002f048b3518f2fa24dcb2c61590cfa657e82dbbb2719903bde21569ae98c2b24a4bef182acad28e278d74e2aff90a632d3fcd8be9c6e0  PliniusIme.apk
 "

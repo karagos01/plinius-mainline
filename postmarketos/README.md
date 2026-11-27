@@ -110,6 +110,23 @@ so that Android apps feel native in Phosh:
   Mali-G615 (v11) as not well tested, so it needs
   `debug.mesa.pan.i.want.a.broken.vulkan.driver`, and the Android UI
   itself keeps rendering with GLES.
+- **Keyboard.** The Phosh on-screen keyboard types into Android apps,
+  with its layouts, diacritics and completion. Android's own keyboard
+  cannot be used with separate windows (Waydroid maps it as a window of
+  its own that covers the app), and Waydroid has neither text-input nor
+  keymap support, so the keys of the on-screen keyboard arrive as
+  garbage. Instead the package installs the "pmOS keyboard" Android
+  input method (`waydroid-plinius/ime`) and `waydroid-ime-bridge`
+  (`waydroid-plinius/ime-bridge`, autostarted in the session). When an
+  Android field wants a keyboard, the input method tells the bridge over
+  the Waydroid network; the bridge maps an invisible 1x1 layer surface
+  with text-input, so Phosh raises its keyboard, and sends the typed
+  text back. Switching to a native app gives the keyboard back. The
+  bridge listens only on `192.168.240.1` and accepts only the token of
+  the input method, which the `waydroid-plinius` service copies from the
+  Android data after boot; the service also selects the input method on
+  the first boot (afterwards the choice in Android settings is kept).
+  `WAYDROID_IME_DEBUG=1` makes the bridge log focus changes.
 - **Clipboard.** Waydroid shares it through `py3-pyclip` and
   `wl-clipboard`, pulled in as dependencies.
 - **Storage.** The Android shared storage (Download, Pictures, DCIM, ...)
@@ -126,10 +143,14 @@ so that Android apps feel native in Phosh:
   forwarding from `waydroid0`).
 
 The NDK only runs on x86_64, so the Mesa is built on the PC and the
-package takes it prebuilt; the archive is not kept in git:
+package takes it prebuilt, like the input method APK; neither is kept in
+git. `waydroid-ime.sh` downloads the Android build-tools and keeps the
+APK signing key in `work/waydroid-ime`; keep it, Android refuses an
+update signed with another key:
 
 ```sh
 postmarketos/waydroid-mesa.sh   # host packages: see the script
+postmarketos/waydroid-ime.sh    # needs a JDK
 postmarketos/install-pmaports.sh "$(pmbootstrap config aports)"
 pmbootstrap checksum waydroid-plinius
 pmbootstrap build waydroid-plinius
