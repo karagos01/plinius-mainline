@@ -96,6 +96,9 @@ struct App {
     full: (i32, i32),
     /// Keyboard height last sent to Android.
     inset: i32,
+    /// Android has a text field that wants the keyboard (SHOW without a
+    /// HIDE since); the surface may be gone while another app is in front.
+    wanted: bool,
 }
 
 fn escape(s: &str) -> String {
@@ -133,6 +136,7 @@ impl App {
 
     fn show(&mut self, qh: &QueueHandle<App>, hint: u32, purpose: u32) {
         self.hide_at = None;
+        self.wanted = true;
         self.content = (hint, purpose);
         if self.surface.is_none() && !self.waydroid_active() {
             // An Android field got focus while another app is in front.
@@ -189,7 +193,14 @@ impl App {
     }
 
     fn hide(&mut self) {
-        debug(format_args!("hide (surface={})", self.surface.is_some()));
+        self.wanted = false;
+        self.drop_surface();
+    }
+
+    /// Gives up the keyboard focus but keeps the keyboard wanted, to raise it
+    /// again when Android comes back to the front.
+    fn drop_surface(&mut self) {
+        debug(format_args!("dropping the surface (exists={})", self.surface.is_some()));
         if self.inset != 0 {
             self.inset = 0;
             self.out.push("INSET 0 0".into());
@@ -292,7 +303,7 @@ impl App {
         debug(format_args!("taking the keyboard focus back"));
         let content = self.content;
         let hide_at = self.hide_at;
-        self.hide();
+        self.drop_surface();
         self.show(qh, content.0, content.1);
         self.hide_at = hide_at;
     }
@@ -310,6 +321,13 @@ impl App {
         if is_waydroid(&t.app_id) {
             // The relaunched activity's window appeared.
             self.orphan_at = None;
+        }
+        // Back in Android with a text field still wanting the keyboard.
+        if self.surface.is_none() && self.wanted && t.activated && is_waydroid(&t.app_id) {
+            debug(format_args!("Waydroid is back, raising the keyboard again"));
+            let (hint, purpose) = self.content;
+            self.show(qh, hint, purpose);
+            return;
         }
         // A Waydroid window took the focus from us while the keyboard is
         // wanted, e.g. a relaunched activity or an app's search screen.
@@ -480,11 +498,19 @@ impl Dispatch<zwp_text_input_v3::ZwpTextInputV3, ()> for App {
             }
             Event::Leave { .. } => {
                 debug(format_args!("text-input leave"));
+                let was_entered = app.entered;
                 app.entered = false;
                 if app.enabled {
                     app.text_input.disable();
                     app.text_input.commit();
                     app.enabled = false;
+                }
+                // Something else took the keyboard, e.g. the Phosh overview or
+                // lock screen. Holding on would keep the focus from the app the
+                // user picks next: Phoc doesn't focus a window while a layer
+                // surface has the focus.
+                if was_entered && app.surface.is_some() {
+                    app.drop_surface();
                 }
             }
             Event::PreeditString { text, .. } => app.pending_preedit = Some(text.unwrap_or_default()),
@@ -619,7 +645,7 @@ fn handle_line(app: &mut App, qh: &QueueHandle<App>, client: &mut Client, line: 
             app.show(qh, hint, purpose);
         }
         "HIDE" => {
-            if app.surface.is_some() {
+            if app.wanted {
                 app.hide_at = Some(Instant::now() + HIDE_DELAY);
             }
         }
@@ -716,6 +742,7 @@ fn main() {
         regrabs: Vec::new(),
         full: (0, 0),
         inset: 0,
+        wanted: false,
     };
 
     let mut listener: Option<TcpListener> = None;

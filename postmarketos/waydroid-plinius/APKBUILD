@@ -15,7 +15,7 @@
 maintainer="Jan Benedikt <karagos01@gmail.com>"
 pkgname=waydroid-plinius
 pkgver=26.3.1
-pkgrel=7
+pkgrel=8
 pkgdesc="Waydroid integration for the Volla Phone Plinius: GPU, windows, keyboard, clipboard, storage"
 url="https://github.com/karagos01/plinius-mainline"
 arch="aarch64"
