@@ -127,6 +127,13 @@ so that Android apps feel native in Phosh:
   Android data after boot; the service also selects the input method on
   the first boot (afterwards the choice in Android settings is kept).
   `WAYDROID_IME_DEBUG=1` makes the bridge log focus changes.
+  Phosh makes room for the keyboard by shrinking the window, which
+  Waydroid turns into a resize of the whole Android display; apps that
+  don't handle size changes (e.g. F-Droid) are relaunched, so they blink
+  when the keyboard opens and closes. Android relaunches them in a new
+  window, so the bridge takes the focus back and both sides wait a
+  moment before dropping the keyboard. Avoiding the relaunch would need
+  Waydroid to report the keyboard as an inset instead.
 - **Clipboard.** Waydroid shares it through `py3-pyclip` and
   `wl-clipboard`, pulled in as dependencies.
 - **Storage.** The Android shared storage (Download, Pictures, DCIM, ...)

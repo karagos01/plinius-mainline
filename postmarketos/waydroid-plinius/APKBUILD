@@ -13,7 +13,7 @@
 maintainer="Jan Benedikt <karagos01@gmail.com>"
 pkgname=waydroid-plinius
 pkgver=26.3.1
-pkgrel=4
+pkgrel=6
 pkgdesc="Waydroid integration for the Volla Phone Plinius: GPU, windows, keyboard, clipboard, storage"
 url="https://github.com/karagos01/plinius-mainline"
 arch="aarch64"
@@ -79,5 +79,5 @@ ae4ea949b5f93bce1cce81138d2493624bb61671af6cf97f5a8a70125dfca984828d235a3685461b
 8439be2a819d9366b8ca583f043bc4fd0710b37d4bff766f58251990e7d38fe4230357c3851f0b8475e8b4364dceb2c455d184f7da0889feea3bb6fc5e17daca  waydroid-plinius.initd
 27185c34569db0345a03b2cf0cafe77af3c06bf1c9583fc21eac96daa14f538122d671300fdce30dd60ca8d85420d96c9588000d9c97e1988650b471668fc72f  waydroid-plinius-ime
 23c66548664f3f230122ed7af08e3ae4f48800cde0c54594ad5c2432226f049ffdb15c3b173b8b47a5b888665c56d8dd8e14eb9bd3cff30d451b6ec63fd358be  waydroid-ime-bridge.desktop
-de25b5cd24089ba346002f048b3518f2fa24dcb2c61590cfa657e82dbbb2719903bde21569ae98c2b24a4bef182acad28e278d74e2aff90a632d3fcd8be9c6e0  PliniusIme.apk
+2eb256b01dd3b5ffcf4549236847a2f823004625f4c241a7603970fa7c150eb8c3cac02e56ec4b2f00d8fd75d6bf44e50dfa3eb8e7439ea5bdbd80a4aa44df38  PliniusIme.apk
 "

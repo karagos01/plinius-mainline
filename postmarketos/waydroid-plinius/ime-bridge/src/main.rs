@@ -52,6 +52,9 @@ const DEFAULT_ADDR: &str = "192.168.240.1:48613";
 const HIDE_DELAY: Duration = Duration::from_millis(300);
 const BIND_RETRY: Duration = Duration::from_secs(2);
 const MAX_LINE: usize = 64 * 1024;
+const REGRAB_WINDOW: Duration = Duration::from_secs(2);
+const MAX_REGRABS: usize = 3;
+const ORPHAN_DELAY: Duration = Duration::from_secs(1);
 
 // Android KeyEvent constants
 const META_SHIFT: u32 = 0x41;
@@ -85,6 +88,10 @@ struct App {
     toplevels: HashMap<ObjectId, Toplevel>,
     out: Vec<String>,
     hide_at: Option<Instant>,
+    /// Set when the last Waydroid window closed; Android relaunches an
+    /// activity in a new window when Phosh resizes it for the keyboard.
+    orphan_at: Option<Instant>,
+    regrabs: Vec<Instant>,
 }
 
 fn escape(s: &str) -> String {
@@ -172,7 +179,9 @@ impl App {
     }
 
     fn hide(&mut self) {
+        debug(format_args!("hide (surface={})", self.surface.is_some()));
         self.hide_at = None;
+        self.orphan_at = None;
         if self.enabled {
             self.text_input.disable();
             self.text_input.commit();
@@ -257,9 +266,43 @@ impl App {
         }
     }
 
-    fn toplevel_done(&mut self, id: &ObjectId) {
+    /// Takes the keyboard focus back by mapping a new surface.
+    fn regrab(&mut self, qh: &QueueHandle<App>) {
+        let now = Instant::now();
+        self.regrabs.retain(|t| now.duration_since(*t) < REGRAB_WINDOW);
+        if self.regrabs.len() >= MAX_REGRABS {
+            debug(format_args!("not taking the focus back again"));
+            return;
+        }
+        self.regrabs.push(now);
+        debug(format_args!("taking the keyboard focus back"));
+        let content = self.content;
+        let hide_at = self.hide_at;
+        self.hide();
+        self.show(qh, content.0, content.1);
+        self.hide_at = hide_at;
+    }
+
+    fn toplevel_done(&mut self, id: &ObjectId, qh: &QueueHandle<App>) {
         let Some(t) = self.toplevels.get(id) else { return };
-        debug(format_args!("toplevel {:?} activated={}", t.app_id, t.activated));
+        debug(format_args!(
+            "toplevel {:?} {:?} activated={} surface={} entered={}",
+            id,
+            t.app_id,
+            t.activated,
+            self.surface.is_some(),
+            self.entered
+        ));
+        if is_waydroid(&t.app_id) {
+            // The relaunched activity's window appeared.
+            self.orphan_at = None;
+        }
+        // A Waydroid window took the focus from us while the keyboard is
+        // wanted, e.g. a relaunched activity or an app's search screen.
+        if self.surface.is_some() && !self.entered && t.activated && is_waydroid(&t.app_id) {
+            self.regrab(qh);
+            return;
+        }
         // Holding the keyboard focus deactivates the Waydroid window, so only
         // another app coming to the front means the user left Android.
         if self.surface.is_some() && t.activated && !is_waydroid(&t.app_id) {
@@ -380,7 +423,10 @@ impl Dispatch<zwlr_layer_surface_v1::ZwlrLayerSurfaceV1, ()> for App {
                     surface.commit();
                 }
             }
-            zwlr_layer_surface_v1::Event::Closed => app.hide(),
+            zwlr_layer_surface_v1::Event::Closed => {
+                debug(format_args!("layer surface closed by the compositor"));
+                app.hide();
+            }
             _ => {}
         }
     }
@@ -451,7 +497,7 @@ impl Dispatch<zwlr_foreign_toplevel_handle_v1::ZwlrForeignToplevelHandleV1, ()> 
         event: zwlr_foreign_toplevel_handle_v1::Event,
         _: &(),
         _: &Connection,
-        _: &QueueHandle<Self>,
+        qh: &QueueHandle<Self>,
     ) {
         use zwlr_foreign_toplevel_handle_v1::Event;
         let id = handle.id();
@@ -465,13 +511,15 @@ impl Dispatch<zwlr_foreign_toplevel_handle_v1::ZwlrForeignToplevelHandleV1, ()> 
                     .any(|c| u32::from_ne_bytes([c[0], c[1], c[2], c[3]]) == 2);
                 app.toplevels.entry(id).or_default().activated = activated;
             }
-            Event::Done => app.toplevel_done(&id),
+            Event::Done => app.toplevel_done(&id, qh),
             Event::Closed => {
+                debug(format_args!("toplevel {id:?} closed"));
                 app.toplevels.remove(&id);
                 handle.destroy();
                 let any_waydroid = app.toplevels.values().any(|t| is_waydroid(&t.app_id));
-                if app.surface.is_some() && !any_waydroid {
-                    app.hide();
+                if app.surface.is_some() && !any_waydroid && app.orphan_at.is_none() {
+                    debug(format_args!("last Waydroid window closed"));
+                    app.orphan_at = Some(Instant::now() + ORPHAN_DELAY);
                 }
             }
             _ => {}
@@ -636,6 +684,8 @@ fn main() {
         toplevels: HashMap::new(),
         out: Vec::new(),
         hide_at: None,
+        orphan_at: None,
+        regrabs: Vec::new(),
     };
 
     let mut listener: Option<TcpListener> = None;
@@ -694,7 +744,10 @@ fn main() {
             fds.push(libc::pollfd { fd: c.stream.as_raw_fd(), events: libc::POLLIN, revents: 0 });
         }
 
-        let mut deadline: Option<Instant> = app.hide_at;
+        let mut deadline: Option<Instant> = match (app.hide_at, app.orphan_at) {
+            (Some(a), Some(b)) => Some(a.min(b)),
+            (a, b) => a.or(b),
+        };
         if listener.is_none() {
             deadline = Some(deadline.map_or(next_bind, |d| d.min(next_bind)));
         }
@@ -747,7 +800,8 @@ fn main() {
             }
         }
 
-        if app.hide_at.is_some_and(|t| Instant::now() >= t) {
+        let now = Instant::now();
+        if app.hide_at.is_some_and(|t| now >= t) || app.orphan_at.is_some_and(|t| now >= t) {
             app.hide();
         }
     }

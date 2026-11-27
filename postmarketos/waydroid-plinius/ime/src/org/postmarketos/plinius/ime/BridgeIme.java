@@ -32,6 +32,12 @@ public class BridgeIme extends InputMethodService {
     private static final String HOST = "192.168.240.1";
     private static final int PORT = 48613;
     private static final int RETRY_MS = 2000;
+    // Android finishes and restarts the input when the window focus moves,
+    // e.g. when Waydroid refocuses the app, and when Phosh shrinks the
+    // window for the keyboard, apps that don't handle size changes are
+    // relaunched (~0.5-0.8 s) and focus their field again. Don't drop the
+    // keyboard for that.
+    private static final int HIDE_DELAY_MS = 1500;
 
     // zwp_text_input_v3 content hints and purposes
     private static final int HINT_COMPLETION = 0x1;
@@ -60,6 +66,12 @@ public class BridgeIme extends InputMethodService {
     private volatile Writer writer;
     private String token;
     private String shown; // last SHOW line while the keyboard is wanted
+    private final Runnable hide = () -> {
+        if (shown != null) {
+            shown = null;
+            send("HIDE");
+        }
+    };
 
     @Override
     public void onCreate() {
@@ -295,6 +307,7 @@ public class BridgeIme extends InputMethodService {
 
     @Override
     public boolean onShowInputRequested(int flags, boolean configChange) {
+        main.removeCallbacks(hide);
         shown = contentType(getCurrentInputEditorInfo());
         send(shown);
         // Never show a window of our own: Waydroid would map it as a
@@ -315,6 +328,9 @@ public class BridgeIme extends InputMethodService {
     @Override
     public void onStartInput(EditorInfo attribute, boolean restarting) {
         super.onStartInput(attribute, restarting);
+        if (attribute == null || attribute.inputType == InputType.TYPE_NULL)
+            return;
+        main.removeCallbacks(hide);
         // The field changed its type while the keyboard is up.
         if (shown != null) {
             String next = contentType(attribute);
@@ -327,8 +343,8 @@ public class BridgeIme extends InputMethodService {
 
     private void wantHidden() {
         if (shown != null) {
-            shown = null;
-            send("HIDE");
+            main.removeCallbacks(hide);
+            main.postDelayed(hide, HIDE_DELAY_MS);
         }
     }
 
