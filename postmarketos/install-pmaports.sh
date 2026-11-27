@@ -9,6 +9,7 @@
 #   device/testing/linux-postmarketos-mediatek-mt6878  (+ configs/linux.config)
 #   device/testing/plinius-modemd                     (modem userspace, ../modemd)
 #   device/testing/modemmanager-plugin-mtk-ccci       (+ ../mm-plugin-mtk-ccci)
+#   device/testing/waydroid-plinius                   (+ Mesa from waydroid-mesa.sh)
 #   temp/callaudiod                                    (speaker button fix)
 #   temp/phosh                                         (screenshot fix)
 #   temp/libcamera                                     (CAMSV + GC32E1 + AF)
@@ -27,6 +28,7 @@ PMAPORTS=${1:-$(pmbootstrap config aports)}
 K=linux-postmarketos-mediatek-mt6878
 for p in device/testing/device-volla-plinius device/testing/$K \
 	device/testing/plinius-modemd device/testing/modemmanager-plugin-mtk-ccci \
+	device/testing/waydroid-plinius \
 	temp/callaudiod temp/phosh temp/libcamera temp/snapshot temp/mesa \
 	temp/gtk4.0; do
 	rm -rf "${PMAPORTS:?}/$p"
@@ -39,6 +41,10 @@ cp "$HERE"/../mm-plugin-mtk-ccci/*.[ch] \
 # WiFi calibration NVRAM: device data, kept out of git (see build.sh)
 cp "$HERE/../../firmware/vendor/WIFI" \
 	"$PMAPORTS/device/testing/device-volla-plinius/mt6878-wifi-nvram.bin"
+# Waydroid Mesa: prebuilt by waydroid-mesa.sh, kept out of git
+W=$HERE/../../work/waydroid-mesa/waydroid-mesa-overlay.tar.gz
+[ -f "$W" ] && cp "$W" "$PMAPORTS/device/testing/waydroid-plinius/" ||
+	echo "no $W: run waydroid-mesa.sh to build waydroid-plinius" >&2
 cp "$HERE/../configs/linux.config" \
 	"$PMAPORTS/device/testing/$K/config-postmarketos-mediatek-mt6878.aarch64"
 echo "installed into $PMAPORTS"

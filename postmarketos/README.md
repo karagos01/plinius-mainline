@@ -94,43 +94,42 @@ and network work). The newest Waydroid vendor image (2026-10-22) has
 Mesa 26.0.8, which does not know the Mali-G615 (arch 11, supported since
 Mesa 26.3): gralloc cannot allocate a single buffer and Android never
 finishes booting. `waydroid-mesa.sh` builds Mesa 26.3 with the Android
-NDK and packs its 64-bit libraries (EGL/GLES, GBM, panfrost Vulkan) as
-an overlay of `/vendor/lib64`; the vendor image itself stays untouched.
-32-bit apps still get the vendor's old Mesa from `/vendor/lib`.
+NDK, 64-bit and 32-bit (EGL/GLES, GBM, panfrost Vulkan), as an overlay of
+`/vendor/lib64` and `/vendor/lib`; the vendor image itself stays
+untouched.
 
-On the PC (needs the host packages listed in the script; downloads the
-NDK and Mesa into `../work/waydroid-mesa`, next to this repository):
+The `waydroid-plinius` package carries that overlay and sets Waydroid up:
+it puts the gralloc and EGL properties and
+`persist.waydroid.multi_windows` into `waydroid.cfg`, enables the
+`waydroid-container` service and the Waydroid firewall rules (the pmOS
+firewall otherwise drops DHCP, DNS and forwarding from `waydroid0`).
+With multi-window mode every Android app opens in its own window, and
+Waydroid adds a launcher with the app's icon to Phosh for every Android
+app, so they start like native apps. The NDK only runs on x86_64, so the
+Mesa is built on the PC and the package takes it prebuilt; the archive is
+not kept in git:
 
 ```sh
-postmarketos/waydroid-mesa.sh
-scp ../work/waydroid-mesa/waydroid-mesa-overlay.tar.gz user@172.16.42.1:/tmp/
+postmarketos/waydroid-mesa.sh   # host packages: see the script
+postmarketos/install-pmaports.sh "$(pmbootstrap config aports)"
+pmbootstrap checksum waydroid-plinius
+pmbootstrap build waydroid-plinius
 ```
 
-Setup on the phone, as root:
+On the phone, as root, install the package and download the Android
+images (LineageOS 20):
 
 ```sh
-apk add waydroid waydroid-nftrules
-# the pmOS firewall drops DHCP, DNS and forwarding from waydroid0
-ln -s /usr/share/nftables.avail/51_waydroid.nft /etc/nftables.d/
-rc-service nftables reload
+apk add waydroid-plinius
 waydroid init
-tar -C /var/lib/waydroid/overlay -xzf /tmp/waydroid-mesa-overlay.tar.gz
-# minigbm gralloc on top of the overlay's GBM, Mesa EGL
-sed -i '/^\[properties\]/a ro.hardware.gralloc = minigbm_gbm_mesa\nro.hardware.egl = mesa' \
-	/var/lib/waydroid/waydroid.cfg
-waydroid upgrade --offline
 rc-service waydroid-container start
-rc-update add waydroid-container default   # optional: at every boot
 ```
 
-Without the overlay, software rendering works instead: set the two
-properties to `default` and `swiftshader`.
-
-Then, as the user in the Phosh session: `waydroid session start` and
-`waydroid show-full-ui` (or the Waydroid launcher). A running session
-keeps Android awake; stop it with `waydroid session stop` before
-standby. Once a vendor image ships Mesa 26.3 or later, the overlay can
-be removed (`rm -r /var/lib/waydroid/overlay/vendor/lib64`).
+Then open any Android app from the Phosh app grid; the first start boots
+Android, which takes a while. `waydroid show-full-ui` shows the whole
+Android UI instead. A running session keeps Android awake; stop it with
+`waydroid session stop` before standby. Once a vendor image ships Mesa
+26.3 or later, the package is no longer needed.
 
 ## pmbootstrap quirks
 

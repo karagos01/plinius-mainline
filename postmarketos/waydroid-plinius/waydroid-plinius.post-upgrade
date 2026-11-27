@@ -1,0 +1,5 @@
+#!/bin/sh
+/usr/libexec/waydroid-plinius-setup
+rc-update -q add waydroid-container default
+rc-service -q nftables reload 2>/dev/null
+exit 0

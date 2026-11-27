@@ -1,0 +1,46 @@
+#!/usr/bin/python3
+# Set the Android properties that make Waydroid use the packaged Mesa and
+# open each Android app in its own window, so that apps appear in Phosh
+# like native ones (their launchers are created by Waydroid itself).
+#
+#   waydroid-plinius-setup [--remove]
+#
+# The properties go into the [properties] section of waydroid.cfg, which
+# "waydroid init" keeps, so this also works before Waydroid is initialised.
+import configparser
+import os
+import subprocess
+import sys
+
+CFG = "/var/lib/waydroid/waydroid.cfg"
+BASE_PROP = "/var/lib/waydroid/waydroid_base.prop"
+PROPS = {
+    # minigbm gralloc on the overlay's GBM, Mesa EGL
+    "ro.hardware.gralloc": "minigbm_gbm_mesa",
+    "ro.hardware.egl": "mesa",
+    "persist.waydroid.multi_windows": "true",
+}
+
+remove = "--remove" in sys.argv[1:]
+cfg = configparser.ConfigParser()
+cfg.read(CFG)
+if not cfg.has_section("properties"):
+    cfg.add_section("properties")
+changed = False
+for key, value in PROPS.items():
+    if remove:
+        changed |= cfg.remove_option("properties", key)
+    elif cfg.get("properties", key, fallback=None) != value:
+        cfg.set("properties", key, value)
+        changed = True
+if not changed:
+    sys.exit(0)
+
+os.makedirs(os.path.dirname(CFG), exist_ok=True)
+with open(CFG, "w") as f:
+    cfg.write(f)
+
+# Already initialised: regenerate the properties (restarts a running
+# container). Otherwise "waydroid init" picks them up.
+if os.path.isfile(BASE_PROP):
+    subprocess.run(["waydroid", "upgrade", "--offline"], check=False)
