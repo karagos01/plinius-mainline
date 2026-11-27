@@ -92,6 +92,10 @@ struct App {
     /// activity in a new window when Phosh resizes it for the keyboard.
     orphan_at: Option<Instant>,
     regrabs: Vec<Instant>,
+    /// Width and tallest height of the usable area seen at that width.
+    full: (i32, i32),
+    /// Keyboard height last sent to Android.
+    inset: i32,
 }
 
 fn escape(s: &str) -> String {
@@ -149,9 +153,15 @@ impl App {
                 qh,
                 (),
             );
-            layer.set_size(1, 1);
+            // Spanning the usable area, which shrinks by the height of the
+            // keyboard: Android is told about it as the input method inset
+            // (the hwcomposer shim keeps the Android display size).
+            layer.set_size(0, 0);
             layer.set_anchor(
-                zwlr_layer_surface_v1::Anchor::Bottom | zwlr_layer_surface_v1::Anchor::Left,
+                zwlr_layer_surface_v1::Anchor::Top
+                    | zwlr_layer_surface_v1::Anchor::Bottom
+                    | zwlr_layer_surface_v1::Anchor::Left
+                    | zwlr_layer_surface_v1::Anchor::Right,
             );
             layer.set_keyboard_interactivity(
                 zwlr_layer_surface_v1::KeyboardInteractivity::Exclusive,
@@ -180,6 +190,10 @@ impl App {
 
     fn hide(&mut self) {
         debug(format_args!("hide (surface={})", self.surface.is_some()));
+        if self.inset != 0 {
+            self.inset = 0;
+            self.out.push("INSET 0 0".into());
+        }
         self.hide_at = None;
         self.orphan_at = None;
         if self.enabled {
@@ -415,8 +429,22 @@ impl Dispatch<zwlr_layer_surface_v1::ZwlrLayerSurfaceV1, ()> for App {
         _: &QueueHandle<Self>,
     ) {
         match event {
-            zwlr_layer_surface_v1::Event::Configure { serial, .. } => {
+            zwlr_layer_surface_v1::Event::Configure { serial, width, height } => {
                 layer.ack_configure(serial);
+                let (w, h) = (width as i32, height as i32);
+                if w > 0 && h > 0 {
+                    if w != app.full.0 {
+                        app.full = (w, h);
+                    } else {
+                        app.full.1 = app.full.1.max(h);
+                    }
+                    let inset = app.full.1 - h;
+                    if inset != app.inset {
+                        debug(format_args!("keyboard inset {inset} of {w}x{}", app.full.1));
+                        app.inset = inset;
+                        app.out.push(format!("INSET {inset} {w}"));
+                    }
+                }
                 if let Some(surface) = &app.surface {
                     surface.attach(Some(&app.buffer), 0, 0);
                     surface.damage_buffer(0, 0, 1, 1);
@@ -686,6 +714,8 @@ fn main() {
         hide_at: None,
         orphan_at: None,
         regrabs: Vec::new(),
+        full: (0, 0),
+        inset: 0,
     };
 
     let mut listener: Option<TcpListener> = None;

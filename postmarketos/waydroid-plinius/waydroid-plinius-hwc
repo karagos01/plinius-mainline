@@ -1,0 +1,34 @@
+#!/bin/sh
+# Puts the hwcomposer shim (see hwc-shim/) into the Waydroid vendor overlay,
+# next to a copy of Waydroid's own hwcomposer from the vendor image, which
+# the shim loads. Without that copy the shim is taken out again, as Android
+# would have no display. --remove takes both out.
+# Runs before the container starts; a running container picks up a change
+# on its next start.
+SHIM=/usr/lib/waydroid-plinius/hwcomposer.waydroid.so
+DIR=/var/lib/waydroid/overlay/vendor/lib64/hw
+
+remove() {
+	rm -f "$DIR"/hwcomposer.waydroid.so "$DIR"/hwcomposer.waydroid-orig.so
+}
+
+[ "$1" = --remove ] && { remove; exit 0; }
+
+images=$(sed -n 's/^images_path *= *//p' /var/lib/waydroid/waydroid.cfg 2>/dev/null)
+img=${images:-/var/lib/waydroid/images}/vendor.img
+[ -f "$img" ] && [ -f "$SHIM" ] || { remove; exit 0; }
+
+mnt=$(mktemp -d) || exit 1
+ok=
+if mount -o ro,loop "$img" "$mnt"; then
+	mkdir -p "$DIR" &&
+		cp "$mnt"/lib64/hw/hwcomposer.waydroid.so "$DIR"/.orig.tmp &&
+		chmod 644 "$DIR"/.orig.tmp &&
+		mv "$DIR"/.orig.tmp "$DIR"/hwcomposer.waydroid-orig.so &&
+		install -m644 "$SHIM" "$DIR"/hwcomposer.waydroid.so &&
+		ok=1
+	umount "$mnt"
+fi
+rmdir "$mnt"
+rm -f "$DIR"/.orig.tmp
+[ -n "$ok" ] || { remove; exit 1; }

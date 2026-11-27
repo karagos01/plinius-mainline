@@ -8,6 +8,9 @@ import android.os.Looper;
 import android.os.SystemClock;
 import android.text.InputType;
 import android.view.KeyEvent;
+import android.view.View;
+import android.view.Window;
+import android.view.WindowManager;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputConnection;
 
@@ -24,9 +27,13 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * Input method without a window of its own: it asks waydroid-ime-bridge on
- * the host to raise the Phosh on-screen keyboard and applies the text that
- * comes back. See ime-bridge/src/main.rs for the protocol.
+ * Input method that asks waydroid-ime-bridge on the host to raise the Phosh
+ * on-screen keyboard and applies the text that comes back. See
+ * ime-bridge/src/main.rs for the protocol.
+ *
+ * Its own window is invisible (alpha 0, so SurfaceFlinger never hands it to
+ * Waydroid's hwcomposer, which would map it as a toplevel covering the app)
+ * and as tall as the Phosh keyboard, so Android lays the app out above it.
  */
 public class BridgeIme extends InputMethodService {
     private static final String HOST = "192.168.240.1";
@@ -66,6 +73,8 @@ public class BridgeIme extends InputMethodService {
     private volatile Writer writer;
     private String token;
     private String shown; // last SHOW line while the keyboard is wanted
+    private int insetPx; // height of the Phosh keyboard over the display
+    private View pad;
     private final Runnable hide = () -> {
         if (shown != null) {
             shown = null;
@@ -77,6 +86,7 @@ public class BridgeIme extends InputMethodService {
     public void onCreate() {
         super.onCreate();
         token = loadToken();
+        makeInvisible();
         Thread t = new Thread(this::netLoop, "ime-bridge");
         t.setDaemon(true);
         t.start();
@@ -88,6 +98,43 @@ public class BridgeIme extends InputMethodService {
         closeSocket();
         sender.shutdownNow();
         super.onDestroy();
+    }
+
+    private void makeInvisible() {
+        Window w = getWindow().getWindow();
+        if (w == null)
+            return;
+        WindowManager.LayoutParams lp = w.getAttributes();
+        lp.alpha = 0f;
+        lp.flags |= WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;
+        w.setAttributes(lp);
+    }
+
+    @Override
+    public View onCreateInputView() {
+        pad = new Pad(this);
+        return pad;
+    }
+
+    /** Empty view as tall as the Phosh keyboard. */
+    private static final class Pad extends View {
+        private final BridgeIme ime;
+
+        Pad(BridgeIme ime) {
+            super(ime);
+            this.ime = ime;
+        }
+
+        @Override
+        protected void onMeasure(int widthSpec, int heightSpec) {
+            setMeasuredDimension(MeasureSpec.getSize(widthSpec), ime.insetPx);
+        }
+    }
+
+    @Override
+    public void onWindowShown() {
+        super.onWindowShown();
+        makeInvisible();
     }
 
     private String loadToken() {
@@ -199,6 +246,18 @@ public class BridgeIme extends InputMethodService {
         int sp = line.indexOf(' ');
         String cmd = sp < 0 ? line : line.substring(0, sp);
         String arg = sp < 0 ? "" : line.substring(sp + 1);
+        if (cmd.equals("INSET")) {
+            String[] p = arg.split(" ");
+            int h = Integer.parseInt(p[0]), w = Integer.parseInt(p[1]);
+            int px = w > 0 ? Math.round((float) h
+                    * getResources().getDisplayMetrics().widthPixels / w) : 0;
+            if (px != insetPx) {
+                insetPx = px;
+                if (pad != null)
+                    pad.requestLayout();
+            }
+            return;
+        }
         InputConnection ic = getCurrentInputConnection();
         if (ic == null)
             return;
@@ -310,14 +369,12 @@ public class BridgeIme extends InputMethodService {
         main.removeCallbacks(hide);
         shown = contentType(getCurrentInputEditorInfo());
         send(shown);
-        // Never show a window of our own: Waydroid would map it as a
-        // separate toplevel covering the app.
-        return false;
+        return true;
     }
 
     @Override
     public boolean onEvaluateInputViewShown() {
-        return false;
+        return true;
     }
 
     @Override

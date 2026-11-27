@@ -1,6 +1,6 @@
 #!/sbin/openrc-run
 
-description="Waydroid storage as ~/Android and the pmOS keyboard in Android"
+description="Waydroid storage as ~/Android, the pmOS keyboard and hwcomposer shim"
 
 depend() {
 	need localmount
@@ -11,6 +11,9 @@ start() {
 	ebegin "Sharing the Waydroid storage"
 	/usr/libexec/waydroid-plinius-share
 	eend $? || return 1
+	ebegin "Installing the hwcomposer shim"
+	/usr/libexec/waydroid-plinius-hwc
+	eend $?
 	# Returns at once; waits in the background for Android to boot
 	/usr/libexec/waydroid-plinius-ime
 }

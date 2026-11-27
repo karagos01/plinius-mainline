@@ -9,11 +9,13 @@
 # The "pmOS keyboard" Android input method (ime/, prebuilt by
 # postmarketos/waydroid-ime.sh into PliniusIme.apk, also not in git) and
 # waydroid-ime-bridge (ime-bridge/) let the Phosh on-screen keyboard type
-# into Android apps.
+# into Android apps. The hwcomposer shim (hwc-shim/) keeps the Android
+# display size when Phosh shrinks a window for that keyboard, so apps are
+# not relaunched; waydroid-plinius-hwc puts it into the vendor overlay.
 maintainer="Jan Benedikt <karagos01@gmail.com>"
 pkgname=waydroid-plinius
 pkgver=26.3.1
-pkgrel=6
+pkgrel=7
 pkgdesc="Waydroid integration for the Volla Phone Plinius: GPU, windows, keyboard, clipboard, storage"
 url="https://github.com/karagos01/plinius-mainline"
 arch="aarch64"
@@ -22,7 +24,7 @@ license="MIT"
 # libgcc + libxkbcommon: waydroid-ime-bridge (no tracedeps, see options)
 depends="acl libgcc libxkbcommon py3-pyclip python3 waydroid waydroid-nftrules
 	wl-clipboard"
-makedepends="cargo libxkbcommon-dev"
+makedepends="cargo clang lld libxkbcommon-dev"
 install="$pkgname.post-install $pkgname.post-upgrade $pkgname.pre-deinstall"
 source="
 	waydroid-mesa-overlay.tar.gz
@@ -30,6 +32,7 @@ source="
 	waydroid-plinius-share
 	waydroid-plinius.initd
 	waydroid-plinius-ime
+	waydroid-plinius-hwc
 	waydroid-ime-bridge.desktop
 	PliniusIme.apk
 "
@@ -39,7 +42,7 @@ options="!check !strip !tracedeps net"
 
 prepare() {
 	default_prepare
-	cp -r "$startdir"/ime-bridge "$srcdir"/
+	cp -r "$startdir"/ime-bridge "$startdir"/hwc-shim "$srcdir"/
 	cd "$srcdir"/ime-bridge
 	cargo fetch --locked
 }
@@ -47,6 +50,7 @@ prepare() {
 build() {
 	cd "$srcdir"/ime-bridge
 	cargo build --frozen --release
+	sh "$srcdir"/hwc-shim/build.sh "$srcdir"/hwc-shim/out
 }
 
 package() {
@@ -60,6 +64,10 @@ package() {
 		"$pkgdir"/etc/init.d/waydroid-plinius
 	install -Dm755 "$srcdir"/waydroid-plinius-ime \
 		"$pkgdir"/usr/libexec/waydroid-plinius-ime
+	install -Dm755 "$srcdir"/waydroid-plinius-hwc \
+		"$pkgdir"/usr/libexec/waydroid-plinius-hwc
+	install -Dm644 "$srcdir"/hwc-shim/out/hwcomposer.waydroid.so \
+		"$pkgdir"/usr/lib/waydroid-plinius/hwcomposer.waydroid.so
 	install -Dm755 "$srcdir"/ime-bridge/target/release/waydroid-ime-bridge \
 		"$pkgdir"/usr/bin/waydroid-ime-bridge
 	install -Dm644 "$srcdir"/waydroid-ime-bridge.desktop \
@@ -76,8 +84,9 @@ sha512sums="
 ae4ea949b5f93bce1cce81138d2493624bb61671af6cf97f5a8a70125dfca984828d235a3685461b2dd7ce34a95a53b1371ff2e7065fda2476d3f6ef6828ba64  waydroid-mesa-overlay.tar.gz
 38f7664e93dac8cef7c67668f5e5bcddd551b363119e97eabdb8733bcd57477a571fbcdeea34d4a2cc8668b66b7613bf8ae5a3dc9bd7870582d1a133feb47ad1  waydroid-plinius-setup
 197b3bbb09dfd7215e60be15d2f959b06e6a36a524ee1ebfa7dfc82d0aabb6f9c7f7bbad784a32c67202d704e7ad8faa92bf59436b1e2b7982cffb57c8c235c4  waydroid-plinius-share
-8439be2a819d9366b8ca583f043bc4fd0710b37d4bff766f58251990e7d38fe4230357c3851f0b8475e8b4364dceb2c455d184f7da0889feea3bb6fc5e17daca  waydroid-plinius.initd
+5b19f0ccc94dc5e17d6c8fea0ea55745e8acc31c07f774b73f824d27a0cb0edf44a181ea9efbe995330fc5ba623065322505e0176f5dc38c90a9cee8994ef3e7  waydroid-plinius.initd
 27185c34569db0345a03b2cf0cafe77af3c06bf1c9583fc21eac96daa14f538122d671300fdce30dd60ca8d85420d96c9588000d9c97e1988650b471668fc72f  waydroid-plinius-ime
+d127eaeffa604c70bbf960f03fd0e27932093eb79f5e99c450196f7cb0d39aa7d44d87d1b8f8ed590ab980949b85861ecf9d0978067f5ec00e668f08323df199  waydroid-plinius-hwc
 23c66548664f3f230122ed7af08e3ae4f48800cde0c54594ad5c2432226f049ffdb15c3b173b8b47a5b888665c56d8dd8e14eb9bd3cff30d451b6ec63fd358be  waydroid-ime-bridge.desktop
-2eb256b01dd3b5ffcf4549236847a2f823004625f4c241a7603970fa7c150eb8c3cac02e56ec4b2f00d8fd75d6bf44e50dfa3eb8e7439ea5bdbd80a4aa44df38  PliniusIme.apk
+98ff77bab94c4581299fef6c84086f539b94467f4b0b63e0e00a197e636544bcbb6b6e10d4d611b26dff5093e99b119f4de470ed2127692836db241d2c84c3b4  PliniusIme.apk
 "

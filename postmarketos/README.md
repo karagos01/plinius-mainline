@@ -128,12 +128,20 @@ so that Android apps feel native in Phosh:
   the first boot (afterwards the choice in Android settings is kept).
   `WAYDROID_IME_DEBUG=1` makes the bridge log focus changes.
   Phosh makes room for the keyboard by shrinking the window, which
-  Waydroid turns into a resize of the whole Android display; apps that
-  don't handle size changes (e.g. F-Droid) are relaunched, so they blink
-  when the keyboard opens and closes. Android relaunches them in a new
-  window, so the bridge takes the focus back and both sides wait a
-  moment before dropping the keyboard. Avoiding the relaunch would need
-  Waydroid to report the keyboard as an inset instead.
+  Waydroid's hwcomposer would turn into a resize of the whole Android
+  display, relaunching apps that don't handle size changes (e.g.
+  F-Droid). A shim (`hwc-shim/`, loaded as `hwcomposer.waydroid.so`
+  from the vendor overlay) loads Waydroid's own hwcomposer and ignores
+  window shrinks that keep the width. The bridge measures the keyboard
+  height and the pmOS keyboard gives its invisible Android window that
+  height, so Android lays the app out above the keyboard as with any
+  input method. `waydroid-plinius-hwc` (run before the container starts)
+  copies Waydroid's hwcomposer out of `vendor.img` for the shim. The
+  shim patches a fixed offset only for the known build ID and logs
+  `hwcomposer-shim:` in logcat; with another vendor image it passes the
+  resizes on, and apps get relaunched again. The bridge still takes the
+  focus back from relaunched windows, and both sides wait a moment
+  before dropping the keyboard.
 - **Clipboard.** Waydroid shares it through `py3-pyclip` and
   `wl-clipboard`, pulled in as dependencies.
 - **Storage.** The Android shared storage (Download, Pictures, DCIM, ...)
