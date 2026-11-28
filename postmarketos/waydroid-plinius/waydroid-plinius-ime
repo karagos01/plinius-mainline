@@ -40,12 +40,15 @@ sync_token() {
 	[ -n "$synced" ]
 }
 
-i=0
-while [ $i -lt 360 ]; do
-	if [ "$(waydroid shell -- getprop sys.boot_completed 2>/dev/null)" = 1 ]; then
+# The first session may start hours after boot. Until Android runs, only
+# look for its surfaceflinger, which is cheap; "waydroid shell" is not.
+while :; do
+	if pgrep -x surfaceflinger >/dev/null &&
+		[ "$(waydroid shell -- getprop sys.boot_completed 2>/dev/null)" = 1 ]; then
 		select_ime
 		sync_token && [ -e "$MARK" ] && exit 0
+		sleep 60
+	else
+		sleep 30
 	fi
-	sleep 10
-	i=$((i + 1))
 done
